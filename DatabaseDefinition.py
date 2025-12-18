@@ -2,8 +2,12 @@ import sqlite3
 
 conn1 = sqlite3.connect("Databases\LibraryData.db")
 curs1 = conn1.cursor()
+conn2 = sqlite3.connect("Databases\StaffLogins.db")
+curs2 = conn2.cursor()
+
 
 curs1.execute('PRAGMA foreign_keys = ON')
+curs2.execute('PRAGMA foreign_keys = ON')
 
 curs1.execute('''
 CREATE TABLE IF NOT EXISTS Students(
@@ -60,5 +64,33 @@ CREATE TABLE IF NOT EXISTS Copies(
               FOREIGN KEY (ISBN) REFERENCES Books(ISBN),
               FOREIGN KEY (HomeLocationID) REFERENCES Locations(ULocID),
               FOREIGN KEY (CurrentLocationID) REFERENCES Locations(ULocID)
+              )''')
+
+curs2.execute('''
+CREATE TABLE IF NOT EXISTS Staff(
+              UStaID INTEGER PRIMARY KEY NOT NULL,
+              PasswordHash TEXT NOT NULL,
+              Forename TEXT NOT NULL,
+              Surname TEXT NOT NULL,
+              IsAdmin BOOLEAN NOT NULL DEFAULT FALSE,
+              AccountActive BOOLEAN NOT NULL DEFAULT TRUE,
+              InactiveDate TEXT,
+              AccessLevel INTEGER NOT NULL
+              )''')
+
+conn2.commit()
+
+curs1.execute('''
+CREATE TABLE IF NOT EXISTS Loans(
+              ULoanID INTEGER PRIMARY KEY NOT NULL,
+              UStuID INTEGER NOT NULL,
+              UStaID INTEGER NOT NULL,
+              UCID INTEGER NOT NULL,
+              Loandate TEXT NOT NULL,
+              DueDate TEXT NOT NULL,
+              ReturnDate TEXT,
+              FOREIGN KEY (UCID) REFERENCES Copies(UCID),
+              FOREIGN KEY (UStuID) REFERENCES Students(UStuID),
+              FOREIGN KEY (UStaID) REFERENCES Staff(UStaID)
               )''')
 conn1.commit()
