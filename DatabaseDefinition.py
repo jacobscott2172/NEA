@@ -94,3 +94,18 @@ CREATE TABLE IF NOT EXISTS Loans(
               FOREIGN KEY (UStaID) REFERENCES Staff(UStaID)
               )''')
 conn1.commit()
+
+curs1.execute('''
+CREATE TABLE IF NOT EXISTS Reservations(
+              URID INTEGER PRIMARY KEY NOT NULL,
+              ReservationDate TEXT NOT NULL,
+              StartDate TEXT NOT NULL,
+              EndDate TEXT NOT NULL,
+              ISBN INTEGER NOT NULL,
+              UStaID INTEGER NOT NULL,
+              Quantity INTEGER NOT NULL,
+              Status TEXT NOT NULL,
+              FOREIGN KEY (ISBN) REFERENCES Books(ISBN),
+              FOREIGN KEY (UStaID) REFERENCES Staff(UStaID)
+              )''')
+conn1.commit()
