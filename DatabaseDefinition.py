@@ -96,8 +96,7 @@ CREATE TABLE IF NOT EXISTS Staff(
               Surname TEXT NOT NULL,
               AccessLevel TEXT NOT NULL,
               AccountActive BOOLEAN NOT NULL DEFAULT TRUE,
-              InactiveDate INTEGER,
-              AccessLevel INTEGER NOT NULL
+              InactiveDate INTEGER
               )''')
 
 conn2.commit()
@@ -131,7 +130,7 @@ conn1.commit()
 curs1.execute('''
 CREATE TABLE IF NOT EXISTS Reservations(
               URID INTEGER PRIMARY KEY NOT NULL,
-              ULocID INTEGER NOT NULL
+              ULocID INTEGER NOT NULL,
               ReservationDate INTEGER NOT NULL,
               StartDate INTEGER NOT NULL,
               EndDate INTEGER NOT NULL,
