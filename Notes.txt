@@ -1,0 +1,11 @@
+Example Teacher account: 
+ - ID = 1
+ - Password = password
+
+ Example Admin account: 
+ - ID = 2
+ - Password = password
+
+  Example SysAdmin account: 
+ - ID = 3
+ - Password = password

@@ -1,3 +1,7 @@
+# Database definition
+# Dates will be stored to the ISO 8601 standard YYYYMMDD
+# Both because it is the international standard and when sorted in ascending or descending order, the dates are chronological
+
 # imports SQLite
 import sqlite3
 
@@ -87,11 +91,11 @@ CREATE TABLE IF NOT EXISTS Copies(
 # Creates the "Staff" table, including a unique ID
 # Staff passwords will be stored hashed and salted for security
 # Access levels will be organised into 3 categories, "Teacher" "Admin" and "SysAdmin"
-# The inactive date will be stored as the ISO 8601 standard YYYYMMDD
 curs2.execute('''
 CREATE TABLE IF NOT EXISTS Staff(
               UStaID INTEGER PRIMARY KEY NOT NULL,
               PasswordHash TEXT NOT NULL,
+              Salt TEXT NOT NULL,
               Forename TEXT NOT NULL,
               Surname TEXT NOT NULL,
               AccessLevel TEXT NOT NULL,
@@ -103,8 +107,7 @@ conn2.commit()
 
 # Creates the "Loans" table, including a unique ID
 # This links all the relevant data of one loan into a single entry, such as:
-# The copy laoned, The student loaned to, The teacher who authorised the loan
-# The start, due, and return dates will be stored as the ISO 8601 standard YYYYMMDD
+# The copy loaned, The student loaned to, The teacher who authorised the loan
 # Logic will be used to ensure that if the number of copies of a book reserved for a certain day is equal to the number available, no more can be loaned
 curs1.execute('''
 CREATE TABLE IF NOT EXISTS Loans(
@@ -126,7 +129,7 @@ conn1.commit()
 # The date of creation, the teacher reserved to, location reserved to, and the number reserved
 # The placement, start, and end dates will be stored as the ISO 8601 standard YYYYMMDD
 # Placement dates will be used to fulfil reservations based upon a "First reserved, first served" basis
-# Logic will be used to find the locations of the relevant books on the day
+# Logic will be used to find the locations of the reserved books books on the day, preferrign books that are in one room for ease of collection
 curs1.execute('''
 CREATE TABLE IF NOT EXISTS Reservations(
               URID INTEGER PRIMARY KEY NOT NULL,
