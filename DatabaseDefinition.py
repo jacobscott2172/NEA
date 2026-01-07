@@ -8,7 +8,7 @@ import sqlite3
 # Creates connections to database files and cursors for creating/editing tables
 conn1 = sqlite3.connect("Databases\LibraryData.db")
 curs1 = conn1.cursor()
-conn2 = sqlite3.connect("Databases\StaffLogins.db")
+conn2 = sqlite3.connect("Databases\SystemConfig.db")
 curs2 = conn2.cursor()
 
 # Enables foreign keys, so tables can refer to each other
@@ -146,3 +146,25 @@ CREATE TABLE IF NOT EXISTS Reservations(
               FOREIGN KEY (UStaID) REFERENCES Staff(UStaID)
               )''')
 conn1.commit()
+
+# Unplanned
+# This stores global config settings, such as the maximum number of loans a default student account can have
+# it auto-inserts default values as they are not specific to the school like room codes or staff names
+# however these values can be changed later
+curs2.execute('''
+              CREATE TABLE IF NOT EXISTS Settings (
+              SettingName TEXT PRIMARY KEY,
+              SettingValue TEXT
+              )''')
+
+curs2.execute('''
+              INSERT INTO Settings (SettingName, SettingValue)
+              VALUES ('DefaultMaxLoans', '3')
+              ''')
+
+curs2.execute('''
+              INSERT INTO Settings (SettingName, SettingValue)
+              VALUES ('DefaultLoanPeriod', '14')
+              ''')
+
+conn2.commit()
