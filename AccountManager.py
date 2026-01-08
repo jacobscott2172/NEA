@@ -10,7 +10,7 @@ import uuid
 # Used to hash passwords
 import hashlib
 # Used for automatic date generation when setting accounts to inactive
-import datetime
+from datetime import datetime
 # Imports the LibraryManager class for the GetNextID method
 from LibraryManager import LibraryManager
 
@@ -36,6 +36,26 @@ class AccountManager:
         self.__SysConn.commit()
         return "Staff added successfully"
     
+    def ChangePassword(self, ID, NewPassword):
+        Salt = uuid.uuid4().hex
+        PasswordHash = hashlib.sha256(Salt.encode() + NewPassword.encode()).hexdigest()
+        self.__SysCurs.execute(
+            "UPDATE Staff SET PasswordHash = ?, Salt = ? WHERE UStaID = ?",
+            (PasswordHash, Salt, ID)
+        )
+
+    def SetAccountStatus(self, TargetID, IsStaff, MakeActive):
+        Table = "Staff" if IsStaff else "Students"
+        IDCol = "UStaID" if IsStaff else "UStuID"
+        Conn = self.__SysConn if IsStaff else self.__LibConn
+        Curs = self.__SysCurs if IsStaff else self.__LibCurs
+        DateValue = int(datetime.now().strftime("%Y%m%d")) if not MakeActive else None
+        Curs.execute(
+            f"UPDATE {Table} SET AccountActive = ?, InactiveDate = ? WHERE {IDCol} = ?",
+            (MakeActive, DateValue, TargetID)
+        )
+        Conn.commit()
+
     def AddStudent(self, Forename, Surname, EntryYear):
         self.__SysCurs.execute(
             "SELECT SettingValue from Settings where SettingName = 'DefaultMaxLoans'",
@@ -62,6 +82,44 @@ class AccountManager:
         self.__CurrentUser = str(row[0])
         self.__CurrentAccessLevel = str(row[5])
         return f"Logged in successfully as {row[3]} {row[4]}"
+    
+    def PromoteStaff (self, ID):
+        self.__SysCurs.execute(
+            "SELECT AccessLevel FROM Staff WHERE UStaID = ?",
+            (ID,)
+        )
+        OldLevel = self.__SysCurs.fetchone()[0]
+        if OldLevel == "Teacher":
+            NewLevel = "Admin"
+        elif OldLevel == "Admin":
+            NewLevel = "SysAdmin"
+        else:
+            return "Cannot promote, no role higher than SysAdmin"
+        self.__SysCurs.execute(
+            "UPDATE Staff SET Accesslevel = ? WHERE UStaID = ?",
+            (NewLevel, ID)
+        )
+        self.__SysConn.commit()
+        return f"Promoted successfully to {NewLevel}"
+    
+    def DemoteStaff (self, ID):
+        self.__SysCurs.execute(
+            "SELECT AccessLevel FROM Staff WHERE UStaID = ?",
+            (ID,)
+        )
+        OldLevel = self.__SysCurs.fetchone()[0]
+        if OldLevel == "Admin":
+            NewLevel = "Teacher"
+        elif OldLevel == "SysAdmin":
+            NewLevel = "Admin"
+        else:
+            return "Cannot Demote, no role lower than Teacher"
+        self.__SysCurs.execute(
+            "UPDATE Staff SET Accesslevel = ? WHERE UStaID = ?",
+            (NewLevel, ID)
+        )
+        self.__SysConn.commit()
+        return f"Demoted successfully to {NewLevel}"
 
-        
 AM = AccountManager()
+print(AM.DemoteStaff(4))
