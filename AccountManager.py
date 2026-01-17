@@ -1,7 +1,6 @@
 # This class contains all of the methods for adding, removing, promoting (etc.) accounts
 # It also contains the method for logging in, and stores the ID of the currently logged in user
 # It requires a connection to the LibraryData database in order to edit student accounts
-# This file contains raw methods
 
 # Imports SQLite for database operations
 import sqlite3
@@ -24,6 +23,7 @@ class AccountManager:
         self.__LibCurs = self.__LibConn.cursor()
         self.__CurrentUser = "None"
         self.__CurrentAccessLevel = "None"
+        self.__Log = open("Log.txt", "a")
 
     def AddStaff(self, Password, Forename, Surname, AccessLevel):
         Salt = uuid.uuid4().hex
@@ -35,6 +35,14 @@ class AccountManager:
         )
         self.__SysConn.commit()
         return "Staff added successfully"
+    
+    def RemoveStaff(self, ID):
+        self.__SysCurs.execute(
+            "DELETE FROM Staff WHERE UStaID = (?)",
+            (ID,)
+        )
+        self.__SysConn.commit()
+        return "Staff removed successfully"
     
     def ChangePassword(self, ID, NewPassword):
         Salt = uuid.uuid4().hex
@@ -49,10 +57,10 @@ class AccountManager:
         IDCol = "UStaID" if IsStaff else "UStuID"
         Conn = self.__SysConn if IsStaff else self.__LibConn
         Curs = self.__SysCurs if IsStaff else self.__LibCurs
-        DateValue = int(datetime.now().strftime("%Y%m%d")) if not MakeActive else None
+        Date = int(datetime.now().strftime("%Y%m%d")) if not MakeActive else None
         Curs.execute(
             f"UPDATE {Table} SET AccountActive = ?, InactiveDate = ? WHERE {IDCol} = ?",
-            (MakeActive, DateValue, TargetID)
+            (MakeActive, Date, TargetID)
         )
         Conn.commit()
 
@@ -67,6 +75,14 @@ class AccountManager:
             (ID, Forename, Surname, MaxLoans[0], EntryYear)
         )
         self.__LibConn.commit()
+
+    def RemoveStudent(self, ID):
+        self.__LibCurs.execute(
+            "DELETE FROM Students WHERE UStuID = (?)",
+            (ID,)
+        )
+        self.__LibConn.commit()
+        return "Student removed successfully"
     
     def LogIn(self, InputID, InputPassword):
         self.__SysCurs.execute(
@@ -120,6 +136,22 @@ class AccountManager:
         )
         self.__SysConn.commit()
         return f"Demoted successfully to {NewLevel}"
+    
+    def Log(self, message):
+        self.__Log.write(f"{self.GetFormattedDateTime()}: {message}\n")
+    
+    def CheckPermission(self, NecessaryPerms):
+        if self.__CurrentAccessLevel != NecessaryPerms:
+            return "Insufficient Permission"
+        elif self.__CurrentAccessLevel == "None":
+            return "No logged user" 
+        
+    #This is not formatted to ISO 8601 in order to aid readability
+    def GetFormattedDateTime(self):
+        x = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
+        return(x)
+    
+
+
 
 AM = AccountManager()
-print(AM.DemoteStaff(4))
