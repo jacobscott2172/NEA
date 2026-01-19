@@ -10,8 +10,6 @@ import uuid
 import hashlib
 # Used for automatic date generation when setting accounts to inactive
 from datetime import datetime
-# Imports the LibraryManager class for the GetNextID method
-from LibraryManager import LibraryManager
 
 class AccountManager:
 
@@ -24,41 +22,59 @@ class AccountManager:
             self.__LibCurs = self.__LibConn.cursor()
             self.__CurrentUser = "None"
             self.__CurrentAccessLevel = "None"
-            self.__Log = open("Log.txt", "a")
+            self.__LogFile = open("Log.txt", "a")
         except Exception as e:  
             print(f"Initialization Error: {e}")
 
     def AddStaff(self, Password, Forename, Surname, AccessLevel):
         try:
+            # Permission check
             if self.__CheckPermission("SysAdmin") != True:
                 self.__Log(f"{self.__CurrentUser} attempted to add staff: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
+            # Salt generation and Hashing
             Salt = uuid.uuid4().hex
             PasswordHash = hashlib.sha256(Salt.encode() + Password.encode()).hexdigest()
-            ID = LibraryManager.GetNextID(self.__SysCurs, "Staff", "UStaID")
+            # Finds next free ID
+            ID = AccountManager.__GetNextID(self.__SysCurs, "Staff", "UStaID")
+            # Inserts Data
             self.__SysCurs.execute(
                 "INSERT INTO Staff (UStaID, PasswordHash, Salt, Forename, Surname, AccessLevel)  VALUES (?, ?, ?, ?, ?, ?)",
                 (ID, PasswordHash, Salt, Forename, Surname, AccessLevel)
             )
+            # Commits, Logs, returns confirmation
             self.__SysConn.commit()
             self.__Log(f"User {self.__CurrentUser} added staff member {ID}")
             return "Staff added successfully"
+            # Error handling
         except Exception as e:
             self.__Log(f"User {self.__CurrentUser} attempted to add staff and encountered an error: {e}")
             return f"System error: {e}"
     
     def RemoveStaff(self, ID):
         try:
+            # Permission check
             if self.__CheckPermission("SysAdmin") != True:
                 self.__Log(f"{self.__CurrentUser} attempted to remove staff: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
+            # Typo check
+            if not AccountManager.__CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
+                self.__Log(f"{self.__CurrentUser} attempted to remove staff: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
+            # Self-deletion check
+            if ID == self.__CurrentUser:
+                self.__Log(f"{self.__CurrentUser} attempted to delete their own account")
+                return "Error: You cannot delete your own account"
+            # Inserts data
             self.__SysCurs.execute(
                 "DELETE FROM Staff WHERE UStaID = (?)",
                 (ID,)
             )
+            # Commits, logs, returns information
             self.__SysConn.commit()
             self.__Log(f"User {self.__CurrentUser} removed staff member {ID}")
             return "Staff removed successfully"
+        # Error handling and logging
         except Exception as e:
             self.__Log(f"User {self.__CurrentUser} attempted to remove staff and encountered an error: {e}")
             return f"System error: {e}"
@@ -68,6 +84,10 @@ class AccountManager:
             if self.__CheckPermission("Admin") != True:
                 self.__Log(f"{self.__CurrentUser} attempted to change password of staff {ID}: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
+            # Typo check
+            if not AccountManager.__CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
+                self.__Log(f"{self.__CurrentUser} attempted to change a password: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
             Salt = uuid.uuid4().hex
             PasswordHash = hashlib.sha256(Salt.encode() + NewPassword.encode()).hexdigest()
             self.__SysCurs.execute(
@@ -80,7 +100,7 @@ class AccountManager:
             self.__Log(f"User {self.__CurrentUser} attempted to change password for staff member {ID} and encountered an error: {e}")
             return f"System error: {e}"
 
-    def SetAccountStatus(self, TargetID, IsStaff, MakeActive):
+    def SetAccountStatus(self, ID, IsStaff, MakeActive):
         try:
             Table = "Staff" if IsStaff else "Students"
             IDCol = "UStaID" if IsStaff else "UStuID"
@@ -90,17 +110,21 @@ class AccountManager:
             StatusStr = "Active" if MakeActive else "Inactive"
             Date = int(datetime.now().strftime("%Y%m%d")) if not MakeActive else None
             if self.__CheckPermission("Admin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to set {AccType} account {TargetID} to {StatusStr}: Insufficient permissions")
+                self.__Log(f"{self.__CurrentUser} attempted to set {AccType} account {ID} to {StatusStr}: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
+            # Typo check
+            if not AccountManager.__CheckIDExists(Curs, "Staff", "UStaID", ID):
+                self.__Log(f"{self.__CurrentUser} attempted to change the status of a {AccType} account to {StatusStr}: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
             Curs.execute(
                 f"UPDATE {Table} SET AccountActive = ?, InactiveDate = ? WHERE {IDCol} = ?",
-                (MakeActive, Date, TargetID)
+                (MakeActive, Date, ID)
             )
 
-            self.__Log(f"User {self.__CurrentUser} set {AccType} account {TargetID} to {StatusStr}")
+            self.__Log(f"User {self.__CurrentUser} set {AccType} account {ID} to {StatusStr}")
             Conn.commit()
         except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to set {AccType} account {TargetID} to {StatusStr} and encountered an error: {e}")
+            self.__Log(f"User {self.__CurrentUser} attempted to set {AccType} account {ID} to {StatusStr} and encountered an error: {e}")
             return f"System error: {e}"
 
     def AddStudent(self, Forename, Surname, EntryYear):
@@ -112,7 +136,7 @@ class AccountManager:
                 "SELECT SettingValue from Settings where SettingName = 'DefaultMaxLoans'",
             )
             MaxLoans = self.__SysCurs.fetchone()
-            ID = LibraryManager.GetNextID(self.__LibCurs, "Students", "UStuID")
+            ID = AccountManager.__GetNextID(self.__LibCurs, "Students", "UStuID")
             self.__LibCurs.execute(
                 "INSERT INTO Students (UStuID, Forename, Surname, MaxActiveLoans, EntryYear)  VALUES (?, ?, ?, ?, ?)",
                 (ID, Forename, Surname, MaxLoans[0], EntryYear)
@@ -128,6 +152,10 @@ class AccountManager:
             if self.__CheckPermission("Admin") != True:
                 self.__Log(f"{self.__CurrentUser} attempted to remove a student: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
+            # Typo check
+            if not AccountManager.__CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
+                self.__Log(f"{self.__CurrentUser} attempted to remove a student: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
             self.__LibCurs.execute(
                 "DELETE FROM Students WHERE UStuID = (?)",
                 (ID,)
@@ -166,6 +194,10 @@ class AccountManager:
             if self.__CheckPermission("SysAdmin") != True:
                 self.__Log(f"{self.__CurrentUser} attempted promote staff member {ID}: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
+            # Typo check
+            if not AccountManager.__CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
+                self.__Log(f"{self.__CurrentUser} attempted to promote staff: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
             self.__SysCurs.execute(
                 "SELECT AccessLevel FROM Staff WHERE UStaID = ?",
                 (ID,)
@@ -193,6 +225,10 @@ class AccountManager:
             if self.__CheckPermission("SysAdmin") != True:
                 self.__Log(f"{self.__CurrentUser} attempted to demote staff member {ID}: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
+            # Typo check
+            if not AccountManager.__CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
+                self.__Log(f"{self.__CurrentUser} attempted to demote staff: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
             elif ID == self.__CurrentUser:
                 self.__Log(f"{self.__CurrentUser} attempted to self-demote")
                 return "Access Denied: you cannot demote yourself."
@@ -220,9 +256,9 @@ class AccountManager:
     
     def __Log(self, message):
         CurrentDateTime = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
-        self.__Log.write(f"{CurrentDateTime} - {message}\n")
-        self.__Log.flush()
-    
+        self.__LogFile.write(f"{CurrentDateTime} - {message}\n")
+        self.__LogFile.flush()
+
     def __CheckPermission(self, NecessaryPerms):
         RoleHierarchy = {"None" : 0, "Teacher" : 1, "Admin" : 2, "SysAdmin" : 3}
         # Get numeric values, default to 0 if not found
@@ -230,7 +266,7 @@ class AccountManager:
         NecessaryValue = RoleHierarchy.get(NecessaryPerms, 100) # Default to 100 so unknown perms fail
         
         if self.__CurrentUser == "None":
-            return "No logged user"
+            return "No User logged in"
             
         if CurrentValue >= NecessaryValue:
             return True
@@ -242,6 +278,10 @@ class AccountManager:
             if self.__CurrentUser != str(ID) and self.__CheckPermission("Admin") != True:
                 self.__Log(f"{self.__CurrentUser} attempted to view unauthorised staff details: Insufficient permissions")
                 return "Access Denied: Insufficient permission to view others' details, you can only view your own"
+            # Typo check
+            if not AccountManager.__CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
+                self.__Log(f"{self.__CurrentUser} attempted to retrieve staff details: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
             self.__SysCurs.execute(
                 "SELECT UStaID, Forename, Surname, AccessLevel, AccountActive FROM Staff WHERE UStaID = ?", 
                 (ID,)
@@ -257,6 +297,10 @@ class AccountManager:
             if self.__CheckPermission("Teacher") != True:
                 self.__Log(f"{self.__CurrentUser} attempted to view unauthorised student details: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
+            # Typo check
+            if not AccountManager.__CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
+                self.__Log(f"{self.__CurrentUser} attempted to remove staff: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
             self.__LibCurs.execute(
                 "SELECT UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear FROM Students WHERE UStuID = ?", 
                 (ID,)
@@ -272,6 +316,10 @@ class AccountManager:
             if self.__CheckPermission("Admin") != True:
                 self.__Log(f"{self.__CurrentUser} attempted to update max loans for student {ID}: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
+            # Typo check
+            if not AccountManager.__CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
+                self.__Log(f"{self.__CurrentUser} attempted to update a student's max loans: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
             self.__LibCurs.execute(
                 "SELECT Forename, Surname FROM Students WHERE UStuID = ?", 
                 (ID,)
@@ -357,4 +405,22 @@ class AccountManager:
         except Exception as e:
             return f"An error occurred during import: {e}"
         
+    @staticmethod
+    def __CheckIDExists(Cursor, Table, IDColumn, Value):
+        Cursor.execute(f"SELECT 1 FROM {Table} WHERE {IDColumn} = ?", (Value,)) 
+        return Cursor.fetchone() is not None
+    
+    @staticmethod
+    def __GetNextID(Cursor, Table, ID):
+        # Returns the next available ID from a table, useful over autoincrement as it accounts for record deletion
+        Cursor.execute(f"SELECT {ID} FROM {Table} ORDER BY {ID} ASC")
+        rows = Cursor.fetchall()
+        existing_ids = [row[0] for row in rows]
+        expected_id = 1
+        for id in existing_ids:
+            if id != expected_id:
+                break
+            expected_id += 1
+        return expected_id
+    
 AM = AccountManager()
