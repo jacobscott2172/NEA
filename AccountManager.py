@@ -25,12 +25,24 @@ class AccountManager:
             self.__LogFile = open("Log.txt", "a")
         except Exception as e:  
             print(f"Initialization Error: {e}")
+    
+    def __del__(self):
+        try:
+            self.__SysConn.commit()
+            self.__SysConn.close()
+            self.__LibConn.commit()
+            self.__LibConn.close()
+            self.__LogFile.flush()
+            self.__LogFile.close()
+        except AttributeError:
+            pass
 
+# --- Adding / Removing accounts ---
     def AddStaff(self, Password, Forename, Surname, AccessLevel):
         try:
             # Permission check
-            if self.__CheckPermission("SysAdmin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to add staff: Insufficient permissions")
+            if self.CheckPermission("SysAdmin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to add staff: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
             # Salt generation and Hashing
             Salt = uuid.uuid4().hex
@@ -44,26 +56,26 @@ class AccountManager:
             )
             # Commits, Logs, returns confirmation
             self.__SysConn.commit()
-            self.__Log(f"User {self.__CurrentUser} added staff member {ID}")
+            self.Log(f"User {self.__CurrentUser} added staff member {ID}")
             return "Staff added successfully"
         # Error handling and logging
         except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to add staff and encountered an error: {e}")
+            self.Log(f"User {self.__CurrentUser} attempted to add staff and encountered an error: {e}")
             return f"System error: {e}"
     
     def RemoveStaff(self, ID):
         try:
             # Permission check
-            if self.__CheckPermission("SysAdmin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to remove staff: Insufficient permissions")
+            if self.CheckPermission("SysAdmin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to remove staff: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
             # Typo check
             if not self.CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
-                self.__Log(f"{self.__CurrentUser} attempted to remove staff: Input ID ({ID}) does not exist")
+                self.Log(f"{self.__CurrentUser} attempted to remove staff: Input ID ({ID}) does not exist")
                 return "Error: ID does not exist"
             # Self-deletion check
             if ID == self.__CurrentUser:
-                self.__Log(f"{self.__CurrentUser} attempted to delete their own account")
+                self.Log(f"{self.__CurrentUser} attempted to delete their own account")
                 return "Error: You cannot delete your own account"
             # Deletes data
             self.__SysCurs.execute(
@@ -72,22 +84,155 @@ class AccountManager:
             )
             # Commits, logs, returns confirmation
             self.__SysConn.commit()
-            self.__Log(f"User {self.__CurrentUser} removed staff member {ID}")
+            self.Log(f"User {self.__CurrentUser} removed staff member {ID}")
             return "Staff removed successfully"
         # Error handling and logging
         except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to remove staff and encountered an error: {e}")
+            self.Log(f"User {self.__CurrentUser} attempted to remove staff and encountered an error: {e}")
             return f"System error: {e}"
-    
+
+    def AddStudent(self, Forename, Surname, EntryYear):
+        try:
+            # Permission check
+            if self.CheckPermission("Admin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to add a student: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            # Retrieves default max loan amount
+            self.__SysCurs.execute(
+                "SELECT SettingValue from Settings where SettingName = 'DefaultMaxLoans'",
+            )
+            MaxLoans = self.__SysCurs.fetchone()
+            # Finds next free ID
+            ID = self.GetNextID(self.__LibCurs, "Students", "UStuID")
+            # Inserts new data
+            self.__LibCurs.execute(
+                "INSERT INTO Students (UStuID, Forename, Surname, MaxActiveLoans, EntryYear)  VALUES (?, ?, ?, ?, ?)",
+                (ID, Forename, Surname, int(MaxLoans[0]), EntryYear)
+            )
+            # Commits, Logs, Returns confirmation
+            self.Log(f"User {self.__CurrentUser} added student {ID}")
+            self.__LibConn.commit()
+            return "Student added successfully"
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted to add a student and encountered an error: {e}")
+            return f"System error: {e}"
+
+    def RemoveStudent(self, ID):
+        try:
+            # Permission check
+            if self.CheckPermission("Admin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to remove a student: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            # Typo check
+            if not self.CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
+                self.Log(f"{self.__CurrentUser} attempted to remove a student: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
+            # Removes student with the given ID
+            self.__LibCurs.execute(
+                "DELETE FROM Students WHERE UStuID = (?)",
+                (ID,)
+            )
+            # Commits, Logs, returns confirmation
+            self.__LibConn.commit()
+            self.Log(f"User {self.__CurrentUser} removed student {ID}")
+            return "Student removed successfully"
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted to remove a student and encountered an error: {e}")
+            return f"System error: {e}"
+
+    def BatchImportStudents(self, FilePath):
+        # Permission Check
+        if self.CheckPermission("Admin") != True:
+            self.Log(f"{self.__CurrentUser} attempted to batch import students: Insufficient permissions")
+            return "Access Denied: Insufficient Permissions."
+        try:
+            # Opens a .txt or .csv file and begins counting the number of students imported
+            Count = 0
+            with open(FilePath, "r") as File:
+                # Skips a header line
+                next(File)
+                for Line in File:
+                    # Splits the data by commas, then inputs each student line by line
+                    Data = Line.strip().split(",")
+                    if len(Data) == 3:
+                        try:
+                            Forename = Data[0]
+                            Surname = Data[1]
+                            EntryYear = int(Data[2])
+                            self.AddStudent(Forename, Surname, EntryYear)
+                            Count += 1
+                        # Error handling: ValueError (i.e entry year is inputted as "Two Thousand and Twenty Five" instead of 2025)
+                        except ValueError:
+                            self.Log(f"Batch Import: Skipping invalid year data in line: {Line}")
+                    # Error handling: erroneous line length
+                    else:
+                        self.Log(f"Batch Import: Skipping malformed line: {Line}")
+            # Logs number imported and returns confirmation
+            self.Log(f"User {self.__CurrentUser} batch imported {Count} students")
+            return f"Successfully imported {Count} students from {FilePath}."
+        # Specific error handling if the file is not found
+        except FileNotFoundError:
+            return "Error: The specified file was not found."
+        # Other error handling
+        except Exception as e:
+            return f"An error occurred during import: {e}"
+
+    def PurgeOldAccounts(self, MonthsToKeep):
+        # Permission check
+        if self.CheckPermission("Admin") != True:
+            self.Log(f"{self.__CurrentUser} attempted to purge old accounts: Insufficient permissions")
+            return "Access Denied: Insufficient Permissions."
+        try:
+            # Generates current date for calculation
+            Now = datetime.now()
+            Year = Now.year
+            Month = Now.month
+            # While not day-accurate, this avoids a "February 31st" issue
+            Day = 1
+            # Subtracts months from current date to find cut off date
+            for m in range(int(MonthsToKeep)):
+                Month -= 1
+                # Year rollover
+                if Month == 0:
+                    Month = 12
+                    Year -= 1
+            # Formats Date to ISO 8601
+            CutOffDate = int(f"{Year}{Month:02d}{Day:02d}")
+            # Deletes students, Also ensures that inactive accounts cannot be deleted if they have outstanding loans
+            self.__LibCurs.execute("""
+                DELETE FROM Students WHERE AccountActive = 0 AND InactiveDate < ? 
+                AND UStuID NOT IN (SELECT BorrowerID FROM Loans WHERE ReturnedDate IS NULL)""", 
+                (CutOffDate,)
+                )
+            # Counts deleted accounts
+            StudentsDeleted = self.__LibCurs.rowcount
+            # Deletes staff
+            self.__SysCurs.execute(
+                "DELETE FROM Staff WHERE AccountActive = 0 AND InactiveDate < ?", 
+                (CutOffDate,)
+            )
+            # Coounts deleted accounts
+            StaffDeleted = self.__SysCurs.rowcount
+            # Commits, Logs, Returns confirmation
+            self.__LibConn.commit()
+            self.__SysConn.commit()
+            self.Log(f"User {self.__CurrentUser} purged {StudentsDeleted} students and {StaffDeleted} staff inactive since before {CutOffDate}")
+            return f"Purged {StudentsDeleted} students and {StaffDeleted} staff inactive since before {CutOffDate}"
+        # Error handling and logging
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted to remove a student and encountered an error: {e}")
+            return f"System error: {e}"
+
+# --- Account editing ---
     def ChangePassword(self, ID, NewPassword):
         try:
             # Permission check
-            if self.__CheckPermission("Admin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to change password of staff {ID}: Insufficient permissions")
+            if self.CheckPermission("Admin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to change password of staff {ID}: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
             # Typo check
             if not self.CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
-                self.__Log(f"{self.__CurrentUser} attempted to change a password: Input ID ({ID}) does not exist")
+                self.Log(f"{self.__CurrentUser} attempted to change a password: Input ID ({ID}) does not exist")
                 return "Error: ID does not exist"
             # New salt generation and password hashing
             Salt = uuid.uuid4().hex
@@ -98,11 +243,11 @@ class AccountManager:
                 (PasswordHash, Salt, ID)
             )
             self.__SysConn.commit()
-            self.__Log(f"User {self.__CurrentUser} changed password for staff member {ID}")
+            self.Log(f"User {self.__CurrentUser} changed password for staff member {ID}")
             return "Passowrd changed"
         # Error handling and logging
         except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to change password for staff member {ID} and encountered an error: {e}")
+            self.Log(f"User {self.__CurrentUser} attempted to change password for staff member {ID} and encountered an error: {e}")
             return f"System error: {e}"
 
     def SetAccountStatus(self, ID, IsStaff, MakeActive):
@@ -118,12 +263,12 @@ class AccountManager:
             # Generates date of inactivity / removes inactive date if being made active
             Date = int(datetime.now().strftime("%Y%m%d")) if not MakeActive else None
             # Permission check
-            if self.__CheckPermission("Admin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to set {AccType} account {ID} to {StatusStr}: Insufficient permissions")
+            if self.CheckPermission("Admin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to set {AccType} account {ID} to {StatusStr}: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
             # Typo check
             if not self.CheckIDExists(Curs, "Staff", "UStaID", ID):
-                self.__Log(f"{self.__CurrentUser} attempted to change the status of a {AccType} account to {StatusStr}: Input ID ({ID}) does not exist")
+                self.Log(f"{self.__CurrentUser} attempted to change the status of a {AccType} account to {StatusStr}: Input ID ({ID}) does not exist")
                 return "Error: ID does not exist"
             # Updates data
             Curs.execute(
@@ -132,104 +277,26 @@ class AccountManager:
             )
             # Commits, logs, returns confirmation
             Conn.commit()
-            self.__Log(f"User {self.__CurrentUser} set {AccType} account {ID} to {StatusStr}")
+            self.Log(f"User {self.__CurrentUser} set {AccType} account {ID} to {StatusStr}")
             return "Activity status changed"
         # Error handling and logging
         except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to set {AccType} account {ID} to {StatusStr} and encountered an error: {e}")
-            return f"System error: {e}"
-
-    def AddStudent(self, Forename, Surname, EntryYear):
-        try:
-            # Permission check
-            if self.__CheckPermission("Admin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to add a student: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
-            # Retrieves default max loan amount
-            self.__SysCurs.execute(
-                "SELECT SettingValue from Settings where SettingName = 'DefaultMaxLoans'",
-            )
-            MaxLoans = self.__SysCurs.fetchone()
-            # Finds next free ID
-            ID = self.GetNextID(self.__LibCurs, "Students", "UStuID")
-            # Inserts new data
-            self.__LibCurs.execute(
-                "INSERT INTO Students (UStuID, Forename, Surname, MaxActiveLoans, EntryYear)  VALUES (?, ?, ?, ?, ?)",
-                (ID, Forename, Surname, int(MaxLoans[0]), EntryYear)
-            )
-            # Commits, Logs, Returns confirmation
-            self.__Log(f"User {self.__CurrentUser} added student {ID}")
-            self.__LibConn.commit()
-            return "Student added successfully"
-        except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to add a student and encountered an error: {e}")
-            return f"System error: {e}"
-
-    def RemoveStudent(self, ID):
-        try:
-            # Permission check
-            if self.__CheckPermission("Admin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to remove a student: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
-            # Typo check
-            if not self.CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
-                self.__Log(f"{self.__CurrentUser} attempted to remove a student: Input ID ({ID}) does not exist")
-                return "Error: ID does not exist"
-            # Removes student with the given ID
-            self.__LibCurs.execute(
-                "DELETE FROM Students WHERE UStuID = (?)",
-                (ID,)
-            )
-            # Commits, Logs, returns confirmation
-            self.__LibConn.commit()
-            self.__Log(f"User {self.__CurrentUser} removed student {ID}")
-            return "Student removed successfully"
-        except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to remove a student and encountered an error: {e}")
-            return f"System error: {e}"
-    
-    def LogIn(self, InputID, InputPassword):
-        try:
-            # Selects the entire row with the supplied ID
-            self.__SysCurs.execute(
-                "SELECT * from Staff where UStaID = ?",
-                (InputID,)
-            )
-            row = self.__SysCurs.fetchone()
-            # If there's no row with that ID, The ID must be incorrect
-            if row is None:
-                self.__Log(f"A user attempted to log in: Invalid ID")
-                return "Invalid ID or Password"
-            # Hashes the inputted password using the included salt
-            InputPassword = hashlib.sha256(row[2].encode() + InputPassword.encode()).hexdigest()
-            # If the password does not match that which is stored, it must be incorrect
-            if InputPassword != row[1]:
-                self.__Log(f"A user attempted to log in: Invalid Password")
-                return "Invalid ID or Password"
-            #Assigns CurrentUser and CurrentAccessLevel their respective values
-            self.__CurrentUser = str(row[0])
-            self.__CurrentAccessLevel = str(row[5])
-            # Logs the login and returns confirmation
-            self.__Log(f"User {self.__CurrentUser} logged in")
-            return f"Logged in successfully as {row[3]} {row[4]}"
-        #Error handling
-        except Exception as e:
-            self.__Log(f"A user attempted to log in and encountered an error: {e}")
+            self.Log(f"User {self.__CurrentUser} attempted to set {AccType} account {ID} to {StatusStr} and encountered an error: {e}")
             return f"System error: {e}"
     
     def PromoteStaff (self, ID):
         try:
             # Permission check
-            if self.__CheckPermission("SysAdmin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted promote staff member {ID}: Insufficient permissions")
+            if self.CheckPermission("SysAdmin") != True:
+                self.Log(f"{self.__CurrentUser} attempted promote staff member {ID}: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
             # Typo check
             if not self.CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
-                self.__Log(f"{self.__CurrentUser} attempted to promote staff: Input ID ({ID}) does not exist")
+                self.Log(f"{self.__CurrentUser} attempted to promote staff: Input ID ({ID}) does not exist")
                 return "Error: ID does not exist"
             # Self-Promotion Check
             elif ID == self.__CurrentUser:
-                self.__Log(f"{self.__CurrentUser} attempted to self-promote")
+                self.Log(f"{self.__CurrentUser} attempted to self-promote")
                 return "Access Denied: you cannot promote yourself."
             # Finds the current access level given ID
             self.__SysCurs.execute(
@@ -251,26 +318,26 @@ class AccountManager:
             )
             # Commits, Logs, returns confirmation
             self.__SysConn.commit()
-            self.__Log(f"User {self.__CurrentUser} promoted user {ID} to {NewLevel}")
+            self.Log(f"User {self.__CurrentUser} promoted user {ID} to {NewLevel}")
             return f"Promoted successfully to {NewLevel}"
         # Error Handling
         except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to promote staff member {ID} to {NewLevel} and encountered an error: {e}")
+            self.Log(f"User {self.__CurrentUser} attempted to promote staff member {ID} to {NewLevel} and encountered an error: {e}")
             return f"System error: {e}"
           
     def DemoteStaff (self, ID):
         try:
             # Permission Check
-            if self.__CheckPermission("SysAdmin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to demote staff member {ID}: Insufficient permissions")
+            if self.CheckPermission("SysAdmin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to demote staff member {ID}: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
             # Typo check
             if not self.CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
-                self.__Log(f"{self.__CurrentUser} attempted to demote staff: Input ID ({ID}) does not exist")
+                self.Log(f"{self.__CurrentUser} attempted to demote staff: Input ID ({ID}) does not exist")
                 return "Error: ID does not exist"
             # Self-Demotion Check
             elif ID == self.__CurrentUser:
-                self.__Log(f"{self.__CurrentUser} attempted to self-demote")
+                self.Log(f"{self.__CurrentUser} attempted to self-demote")
                 return "Access Denied: you cannot demote yourself."
             # Finds the current access level given ID
             self.__SysCurs.execute(
@@ -292,13 +359,85 @@ class AccountManager:
             )
             # Commits, Logs, returns confirmation
             self.__SysConn.commit()
-            self.__Log(f"User {self.__CurrentUser} demoted user {ID} to {NewLevel}")
+            self.Log(f"User {self.__CurrentUser} demoted user {ID} to {NewLevel}")
             return f"Demoted successfully to {NewLevel}"
         # Error Handling
         except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to demote   staff member {ID} to {NewLevel} and encountered an error: {e}")
+            self.Log(f"User {self.__CurrentUser} attempted to demote   staff member {ID} to {NewLevel} and encountered an error: {e}")
+            return f"System error: {e}"
+
+# --- Default settings editing ---
+    def UpdateStudentMaxLoans(self, ID, MaxLoans):
+        try:
+            # Permission check
+            if self.CheckPermission("Admin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to update max loans for student {ID}: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            # Typo check
+            if not self.CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
+                self.Log(f"{self.__CurrentUser} attempted to update a student's max loans: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
+            # Retrieves student name for clarity in confirmation statement
+            self.__LibCurs.execute(
+                "SELECT Forename, Surname FROM Students WHERE UStuID = ?", 
+                (ID,)
+                )
+            Name = self.__LibCurs.fetchone()
+            # Updates max loans for an ID specified student
+            self.__LibCurs.execute(
+                "UPDATE Students SET MaxActiveLoans = ? WHERE UStuID = ?",
+                (MaxLoans, ID)
+            )
+            # Commits, Logs, and returns confirmation
+            self.__LibConn.commit()
+            self.Log(f"User {self.__CurrentUser} changed maximum loans for student {ID} to {MaxLoans}")
+            return f"Max Loans for student {Name[0]} {Name[1]} changed to {MaxLoans}"
+        # Error handling
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted update max loans of student {ID} to {MaxLoans} and encountered an error: {e}")
             return f"System error: {e}"
     
+    def UpdateDefaultMaxLoans(self, MaxLoans):
+        try:
+            # Permission Check
+            if self.CheckPermission("Admin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to update default max loans: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            # Updates Default max loans for new student accounts
+            self.__SysCurs.execute(
+                "UPDATE Settings SET SettingValue = ? WHERE SettingName = ?",
+                (str(MaxLoans), "DefaultMaxLoans")
+            )
+            # Commits, Logs, and returns confirmation
+            self.__SysConn.commit()
+            self.Log(f"User {self.__CurrentUser} changed maximum loans for default students to {MaxLoans}")
+            return f"Changed default max loans to {MaxLoans}"
+        # Error handling
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted default max loans to {MaxLoans} and encountered an error: {e}")
+            return f"System error: {e}"
+
+    def UpdateDefaultLoanPeriod(self, LoanPeriod):
+        try:
+            # Permission Check
+            if self.CheckPermission("Admin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to update default loan period: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            # Updates Default max loans for new student accounts
+            self.__SysCurs.execute(
+                "UPDATE Settings SET SettingValue = ? WHERE SettingName = ?",
+                (str(LoanPeriod), "DefaultLoanPeriod")
+            )
+            # Commits, Logs, and returns confirmation
+            self.__SysConn.commit()
+            self.Log(f"User {self.__CurrentUser} changed loan period for default students to {LoanPeriod}")
+            return f"Changed default loan period to {LoanPeriod}"
+        # Error handling
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted default max loans to {LoanPeriod} and encountered an error: {e}")
+            return f"System error: {e}"
+        
+# --- Internal Logger ---
     def Log(self, message):
         # Generates current date and time (Not formatted to ISO 8601 to aid readability)
         CurrentDateTime = datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S")
@@ -307,6 +446,124 @@ class AccountManager:
         # Immediately pushes to Log.txt so logs can be read in real time
         self.__LogFile.flush()
 
+# --- Log in/out ---
+    def LogIn(self, InputID, InputPassword):
+        try:
+            # Selects the entire row with the supplied ID
+            self.__SysCurs.execute(
+                "SELECT * from Staff where UStaID = ?",
+                (InputID,)
+            )
+            row = self.__SysCurs.fetchone()
+            # If there's no row with that ID, The ID must be incorrect
+            if row is None:
+                self.Log(f"A user attempted to log in: Invalid ID")
+                return "Invalid ID or Password"
+            # Hashes the inputted password using the included salt
+            InputPassword = hashlib.sha256(row[2].encode() + InputPassword.encode()).hexdigest()
+            # If the password does not match that which is stored, it must be incorrect
+            if InputPassword != row[1]:
+                self.Log(f"A user attempted to log in: Invalid Password")
+                return "Invalid ID or Password"
+            #Assigns CurrentUser and CurrentAccessLevel their respective values
+            self.__CurrentUser = str(row[0])
+            self.__CurrentAccessLevel = str(row[5])
+            # Logs the login and returns confirmation
+            self.Log(f"User {self.__CurrentUser} logged in")
+            return f"Logged in successfully as {row[3]} {row[4]}"
+        #Error handling
+        except Exception as e:
+            self.Log(f"A user attempted to log in and encountered an error: {e}")
+            return f"System error: {e}"
+
+    def LogOut(self):
+        # Logs logging out
+        self.Log(f"User {self.__CurrentUser} logged out")
+        # Sets current user and access level to None
+        self.__CurrentUser = "None"
+        self.__CurrentAccessLevel = "None"
+        # Returns confirmation
+        return "Logged out successfully"
+    
+# --- Getter Methods ---
+    def GetAllStaff(self):
+        try:
+            # Permission check
+            if self.CheckPermission("SysAdmin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to view all staff details: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            # Selects all staff details
+            self.__SysCurs.execute("SELECT UStaID, Forename, Surname, AccessLevel, AccountActive FROM Staff")
+            # Logs retrieval and returns all staff details as a list of tuples
+            self.Log(f"User {self.__CurrentUser} retrieved all staff details")
+            return self.__SysCurs.fetchall()
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted to retrieve all staff details and encountered an error: {e}")
+            return f"System error: {e}"
+    
+    def GetAllStudents(self):
+        try:
+            # Permission check
+            if self.CheckPermission("Teacher") != True:
+                self.Log(f"{self.__CurrentUser} attempted to view all student details: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            # Selects all staff details
+            self.__LibCurs.execute("SELECT UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear FROM Students")
+            # Logs retrieval and returns all staff details as a list of tuples
+            self.Log(f"User {self.__CurrentUser} retrieved all student details")
+            return self.__LibCurs.fetchall()
+        # Error Handling
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted to retrieve all student details and encountered an error: {e}")
+            return f"System error: {e}"
+    
+    def GetStaffDetails(self, ID):
+        try:
+            # Permission check
+            if self.__CurrentUser != str(ID) and self.CheckPermission("Admin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to view unauthorised staff details: Insufficient permissions")
+                return "Access Denied: Insufficient permission to view others' details, you can only view your own"
+            # Typo check
+            if not self.CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
+                self.Log(f"{self.__CurrentUser} attempted to retrieve staff details: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
+            # Retrieves details of 1 staff member - specified with ID
+            self.__SysCurs.execute(
+                "SELECT UStaID, Forename, Surname, AccessLevel, AccountActive FROM Staff WHERE UStaID = ?", 
+                (ID,)
+                )
+            # Logs and returns details as a tuple
+            self.Log(f"User {self.__CurrentUser} retrieved details of staff member {ID}")
+            return self.__SysCurs.fetchone()
+        # Error handling
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted to retrieve details of staff member {ID} and encountered an error: {e}")
+            return f"System error: {e}"
+    
+    def GetStudentDetails(self, ID):
+        try:
+            # Permission check
+            if self.CheckPermission("Teacher") != True:
+                self.Log(f"{self.__CurrentUser} attempted to view unauthorised student details: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            # Typo check
+            if not self.CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
+                self.Log(f"{self.__CurrentUser} attempted to remove staff: Input ID ({ID}) does not exist")
+                return "Error: ID does not exist"
+            # Retrieves details of 1 student - specified with ID
+            self.__LibCurs.execute(
+                "SELECT UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear FROM Students WHERE UStuID = ?", 
+                (ID,)
+                )
+            # Logs and returns details as a tuple
+            self.Log(f"User {self.__CurrentUser} retrieved details of student {ID}")
+            return self.__LibCurs.fetchone()
+        # Error handling
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted to retrieve details of staff member {ID} and encountered an error: {e}")
+            return f"System error: {e}"
+
+# --- Checking methods ---
     def CheckPermission(self, NecessaryPerms):
         # Active account check
         if self.IsAccountActive(self.__SysCurs, "Staff", "UStaID", self.__CurrentUser) != True:
@@ -323,173 +580,7 @@ class AccountManager:
             return True
         else:
             return False
-        
-    def GetStaffDetails(self, ID):
-        try:
-            # Permission check
-            if self.__CurrentUser != str(ID) and self.__CheckPermission("Admin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to view unauthorised staff details: Insufficient permissions")
-                return "Access Denied: Insufficient permission to view others' details, you can only view your own"
-            # Typo check
-            if not self.CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
-                self.__Log(f"{self.__CurrentUser} attempted to retrieve staff details: Input ID ({ID}) does not exist")
-                return "Error: ID does not exist"
-            # Retrieves details of 1 staff member - specified with ID
-            self.__SysCurs.execute(
-                "SELECT UStaID, Forename, Surname, AccessLevel, AccountActive FROM Staff WHERE UStaID = ?", 
-                (ID,)
-                )
-            # Logs and returns details as a tuple
-            self.__Log(f"User {self.__CurrentUser} retrieved details of staff member {ID}")
-            return self.__SysCurs.fetchone()
-        # Error handling
-        except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to retrieve details of staff member {ID} and encountered an error: {e}")
-            return f"System error: {e}"
-    
-    def GetStudentDetails(self, ID):
-        try:
-            # Permission check
-            if self.__CheckPermission("Teacher") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to view unauthorised student details: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
-            # Typo check
-            if not self.CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
-                self.__Log(f"{self.__CurrentUser} attempted to remove staff: Input ID ({ID}) does not exist")
-                return "Error: ID does not exist"
-            # Retrieves details of 1 student - specified with ID
-            self.__LibCurs.execute(
-                "SELECT UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear FROM Students WHERE UStuID = ?", 
-                (ID,)
-                )
-            # Logs and returns details as a tuple
-            self.__Log(f"User {self.__CurrentUser} retrieved details of student {ID}")
-            return self.__LibCurs.fetchone()
-        # Error handling
-        except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to retrieve details of staff member {ID} and encountered an error: {e}")
-            return f"System error: {e}"
-    
-    def UpdateStudentMaxLoans(self, ID, MaxLoans):
-        try:
-            # Permission check
-            if self.__CheckPermission("Admin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to update max loans for student {ID}: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
-            # Typo check
-            if not self.CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
-                self.__Log(f"{self.__CurrentUser} attempted to update a student's max loans: Input ID ({ID}) does not exist")
-                return "Error: ID does not exist"
-            # Retrieves student name for clarity in confirmation statement
-            self.__LibCurs.execute(
-                "SELECT Forename, Surname FROM Students WHERE UStuID = ?", 
-                (ID,)
-                )
-            Name = self.__LibCurs.fetchone()
-            # Updates max loans for an ID specified student
-            self.__LibCurs.execute(
-                "UPDATE Students SET MaxActiveLoans = ? WHERE UStuID = ?",
-                (MaxLoans, ID)
-            )
-            # Commits, Logs, and returns confirmation
-            self.__LibConn.commit()
-            self.__Log(f"User {self.__CurrentUser} changed maximum loans for student {ID} to {MaxLoans}")
-            return f"Max Loans for student {Name[0]} {Name[1]} changed to {MaxLoans}"
-        # Error handling
-        except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted update max loans of student {ID} to {MaxLoans} and encountered an error: {e}")
-            return f"System error: {e}"
-    
-    def UpdateDefaultMaxLoans(self, MaxLoans):
-        try:
-            # Permission Check
-            if self.__CheckPermission("Admin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to update default max loans: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
-            # Updates Default max loans for new student accounts
-            self.__SysCurs.execute(
-                "UPDATE Settings SET SettingValue = ? WHERE SettingName = ?",
-                (str(MaxLoans), "DefaultMaxLoans")
-            )
-            # Commits, Logs, and returns confirmation
-            self.__SysConn.commit()
-            self.__Log(f"User {self.__CurrentUser} changed maximum loans for default students to {MaxLoans}")
-            return f"Changed default max loans to {MaxLoans}"
-        # Error handling
-        except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted default max loans to {MaxLoans} and encountered an error: {e}")
-            return f"System error: {e}"
-    
-    def GetAllStaff(self):
-        try:
-            # Permission check
-            if self.__CheckPermission("SysAdmin") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to view all staff details: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
-            # Selects all staff details
-            self.__SysCurs.execute("SELECT UStaID, Forename, Surname, AccessLevel, AccountActive FROM Staff")
-            # Logs retrieval and returns all staff details as a list of tuples
-            self.__Log(f"User {self.__CurrentUser} retrieved all staff details")
-            return self.__SysCurs.fetchall()
-        except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to retrieve all staff details and encountered an error: {e}")
-            return f"System error: {e}"
-    
-    def GetAllStudents(self):
-        try:
-            # Permission check
-            if self.__CheckPermission("Teacher") != True:
-                self.__Log(f"{self.__CurrentUser} attempted to view all student details: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
-            # Selects all staff details
-            self.__LibCurs.execute("SELECT UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear FROM Students")
-            # Logs retrieval and returns all staff details as a list of tuples
-            self.__Log(f"User {self.__CurrentUser} retrieved all student details")
-            return self.__LibCurs.fetchall()
-        # Error Handling
-        except Exception as e:
-            self.__Log(f"User {self.__CurrentUser} attempted to retrieve all student details and encountered an error: {e}")
-            return f"System error: {e}"
-    
-    def LogOut(self):
-        # Logs logging out
-        self.__Log(f"User {self.__CurrentUser} logged out")
-        # Sets current user and access level to None
-        self.__CurrentUser = "None"
-        self.__CurrentAccessLevel = "None"
-        # Returns confirmation
-        return "Logged out successfully"
-    
-    def BatchImportStudents(self, FilePath):
-        # Permission Check
-        if self.__CheckPermission("Admin") != True:
-            self.__Log(f"{self.__CurrentUser} attempted to batch import students: Insufficient permissions")
-            return "Access Denied: Insufficient Permissions."
-        try:
-            # Opens a .txt or .csv file and begins counting the number of students imported
-            Count = 0
-            with open(FilePath, "r") as File:
-                # Skips a header line, identifying columns as Forename, Surname, and EntryYear
-                next(File)
-                for Line in File:
-                    # Splits the data by commas, then inputs each student line by line
-                    Data = Line.strip().split(",")
-                    if len(Data) == 3:
-                        Forename = Data[0]
-                        Surname = Data[1]
-                        EntryYear = int(Data[2])
-                        self.AddStudent(Forename, Surname, EntryYear)
-                        Count += 1
-            # Logs number imported and returns confirmation
-            self.__Log(f"User {self.__CurrentUser} batch imported {Count} students")
-            return f"Successfully imported {Count} students from {FilePath}."
-        # Specific error handling if the file is not found
-        except FileNotFoundError:
-            return "Error: The specified file was not found."
-        # Other error handling
-        except Exception as e:
-            return f"An error occurred during import: {e}"
-    
+
     @staticmethod
     def CheckIDExists(Cursor, Table, IDColumn, ID):
         # Checks if an inputted ID exists, Used to find and detect typos in user input
