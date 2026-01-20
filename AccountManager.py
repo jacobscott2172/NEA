@@ -565,9 +565,6 @@ class AccountManager:
 
 # --- Checking methods ---
     def CheckPermission(self, NecessaryPerms):
-        # Active account check
-        if self.IsAccountActive(self.__SysCurs, "Staff", "UStaID", self.__CurrentUser) != True:
-            return False
         RoleHierarchy = {"None" : 0, "Teacher" : 1, "Admin" : 2, "SysAdmin" : 3}
         # Get numeric values, default to 0 if not found as to reduce bypass risk
         CurrentValue = RoleHierarchy.get(self.__CurrentAccessLevel, 0)
@@ -575,7 +572,10 @@ class AccountManager:
         # Compare values
         if self.__CurrentUser == "None":
             return "No User logged in"
-            
+        # Active account check
+        if self.IsAccountActive(self.__SysCurs, "Staff", "UStaID", self.__CurrentUser) != True:
+            return False
+        # More value comparison
         if CurrentValue >= NecessaryValue:
             return True
         else:
@@ -588,9 +588,9 @@ class AccountManager:
         return Cursor.fetchone() is not None
     
     @staticmethod
-    def GetNextID(Cursor, Table, ID):
+    def GetNextID(Cursor, Table, IDColumn):
         # Finds the next available ID in a table. I prefer this over AutoIncrement as it fills in gaps, reducing overall database size
-        Cursor.execute(f"SELECT {ID} FROM {Table} ORDER BY {ID} ASC")
+        Cursor.execute(f"SELECT {IDColumn} FROM {Table} ORDER BY {IDColumn} ASC")
         rows = Cursor.fetchall()
         # Isolates the list of tuples from .fetchall into a list of IDs
         existing_ids = [row[0] for row in rows]
@@ -605,8 +605,11 @@ class AccountManager:
     @staticmethod
     def IsAccountActive(Cursor, Table, IDcolumn, ID):
         # Checks if an account is active, returns the boolean value
-        Cursor.execute(f"SELECT AccountActive FROM {Table} WHERE {IDcolumn} = {ID}")
-        return Cursor.fetchone()[0] is 1
+        Cursor.execute(
+            f"SELECT AccountActive FROM {Table} WHERE {IDcolumn} = ?",
+            (ID, )
+        )
+        return Cursor.fetchone()[0] == 1
    
     def CheckStaffMemberActive(self, ID):
         # Public method for making checks within the SystemConfig file, as LibraryManager will not have access to this
