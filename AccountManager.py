@@ -562,6 +562,12 @@ class AccountManager:
         except Exception as e:
             self.Log(f"User {self.__CurrentUser} attempted to retrieve details of staff member {ID} and encountered an error: {e}")
             return f"System error: {e}"
+    
+    def GetCurrentUser(self):
+        return self.__CurrentUser
+    
+    def GetCurrentAccessLevel(self):
+        return self.__CurrentAccessLevel
 
 # --- Checking methods ---
     def CheckPermission(self, NecessaryPerms):
