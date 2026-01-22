@@ -616,9 +616,9 @@ class AccountManager:
             (ID, )
         )
         return Cursor.fetchone()[0] == 1
-   
+       
     def CheckStaffMemberActive(self, ID):
         # Public method for making checks within the SystemConfig file, as LibraryManager will not have access to this
         return self.IsAccountActive(self.__SysCurs, "Staff", "UStaID", ID)
-    
+
 AM = AccountManager()
