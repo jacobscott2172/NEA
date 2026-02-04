@@ -342,6 +342,9 @@ class LibraryManager:
         except Exception as e:
             self.__AM.Log(f"Conflict Check Error: {e}")
             return f"System error: {e}"
+
+
+
 # Needed:
 # Getter methods
 # Search methods
