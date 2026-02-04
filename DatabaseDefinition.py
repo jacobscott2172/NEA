@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS Loans(
               UStuID INTEGER NOT NULL,
               UStaID INTEGER NOT NULL,
               UCID INTEGER NOT NULL,
-              Loandate INTEGER NOT NULL,
+              LoanDate INTEGER NOT NULL,
               DueDate INTEGER NOT NULL,
               ReturnDate INTEGER,
               FOREIGN KEY (UCID) REFERENCES Copies(UCID),
@@ -134,13 +134,11 @@ curs1.execute('''
 CREATE TABLE IF NOT EXISTS Reservations(
               URID INTEGER PRIMARY KEY NOT NULL,
               ULocID INTEGER NOT NULL,
+              CreationDate INTEGER NOT NULL,
               ReservationDate INTEGER NOT NULL,
-              StartDate INTEGER NOT NULL,
-              EndDate INTEGER NOT NULL,
               ISBN INTEGER NOT NULL,
               UStaID INTEGER NOT NULL,
               Quantity INTEGER NOT NULL,
-              Status TEXT NOT NULL,
               FOREIGN KEY (ULocID) REFERENCES Locations(ULocID),
               FOREIGN KEY (ISBN) REFERENCES Books(ISBN),
               FOREIGN KEY (UStaID) REFERENCES Staff(UStaID)

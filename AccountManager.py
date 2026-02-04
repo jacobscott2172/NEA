@@ -569,6 +569,14 @@ class AccountManager:
     def GetCurrentAccessLevel(self):
         return self.__CurrentAccessLevel
 
+    def GetLoanPeriod(self):
+        # Retrieves the default loan period from the SystemConfig database
+        self.__SysCurs.execute(
+            "SELECT SettingValue from Settings where SettingName = 'DefaultLoanPeriod'",
+        )
+        LoanPeriod = self.__SysCurs.fetchone()
+        return int(LoanPeriod[0])
+
 # --- Checking methods ---
     def CheckPermission(self, NecessaryPerms):
         RoleHierarchy = {"None" : 0, "Teacher" : 1, "Admin" : 2, "SysAdmin" : 3}
@@ -577,7 +585,7 @@ class AccountManager:
         NecessaryValue = RoleHierarchy.get(NecessaryPerms, 100) # Default to 100 so unknown perms fail
         # Compare values
         if self.__CurrentUser == "None":
-            return "No User logged in"
+            return False
         # Active account check
         if self.IsAccountActive(self.__SysCurs, "Staff", "UStaID", self.__CurrentUser) != True:
             return False
@@ -620,5 +628,3 @@ class AccountManager:
     def CheckStaffMemberActive(self, ID):
         # Public method for making checks within the SystemConfig file, as LibraryManager will not have access to this
         return self.IsAccountActive(self.__SysCurs, "Staff", "UStaID", ID)
-
-AM = AccountManager()
