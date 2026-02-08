@@ -1,8 +1,7 @@
 import sqlite3
 from AccountManager import AccountManager
 from datetime import datetime, timedelta
-import smtplib
-
+from notifypy import Notify
 class LibraryManager:
 
 
@@ -12,9 +11,6 @@ class LibraryManager:
         self.__Curs = self.__Conn.cursor()
         self.__AM = AccountManager()
         self.__LogFile = open("Log.txt", "a")
-        self.__SMTP = smtplib.SMTP("holyshithelpme")  # Replace with actual SMTP server and port at some point
-
-
 
     def __del__(self):
         self.__Conn.commit()
@@ -303,6 +299,8 @@ class LibraryManager:
             # Get dates
             LoanDate = Date = int(datetime.now().strftime("%Y%m%d"))
             DueDate = int((datetime.now() + timedelta(days = self.__AM.GetLoanPeriod())).strftime("%Y%m%d"))
+            if not self.LoanStockConflictCheck(UCID, LoanDate, DueDate):
+                return "Loan cannot be issued due to stock conflicts with existing reservations or loans."
             # Issue loan
             ULoanID = self.__AM.GetNextID(self.__Curs, "Loans", "ULoanID")
             self.__Curs.execute(
@@ -392,7 +390,7 @@ class LibraryManager:
             StartingStock = self.__Curs.fetchone()[0]
             Timeline = []
             self.__Curs.execute(
-                "SELECT DueDate FROM Loans WHERE ISBN = ? AND ReturnDate = NULL AND DueDate BETWEEN ? AND ?",
+                """SELECT Loans.DueDate FROM Loans INNER JOIN Copies ON Loans.UCID = Copies.UCID WHERE Copies.ISBN = ? AND Loans.ReturnDate IS NULL AND Loans.DueDate BETWEEN ? AND ?""",
                 (ISBN, LoanDate, DueDate)
             )
             for row in self.__Curs.fetchall():
@@ -434,8 +432,8 @@ class LibraryManager:
                         Right = Mid - 1
                 if not Found:
                     Timeline.insert(Left, [ResDate, -Qty])
-                DateObj = datetime.datetime.strptime(str(ResDate), "%Y%m%d")
-                NextDay = int((DateObj + datetime.timedelta(days=1)).strftime("%Y%m%d"))
+                DateObj = datetime.strptime(str(ResDate), "%Y%m%d")
+                NextDay = int((DateObj + timedelta(days=1)).strftime("%Y%m%d"))
 
                 Left = 0
                 Right = len(Timeline) - 1
@@ -465,10 +463,15 @@ class LibraryManager:
             return f"System error: {e}"
 
 
-    def NotifyUser(god, Notification):
-        # This will be used to send notifications to users, such as overdue reminders, reservation ready notifications, and account status updates
-        # maybe another database table to store notifications and their read/unread status, or maybe just an email system that sends out emails based on certain triggers
-        pass
+    def NotifyUser(self, Message):
+        notification = Notify()
+        notification.title = "School Library"
+        notification.message = Message
+        notification.icon = "Media/library-symbol-square.jpg"
+        notification.audio = "Media/NotifySound.wav"
+        notification.send()
+
+
 
 
 # Needed:
@@ -476,7 +479,7 @@ class LibraryManager:
 # Search methods
 # Update methods
 # delete methods
-# double bullshit reservation stock finder
+# reservation stock finder
 # return methods
 # overdue methods
 # bulk book input
