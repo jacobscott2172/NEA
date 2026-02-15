@@ -6,11 +6,11 @@ class LibraryManager:
 
 
     def __init__ (self):
-        # Establishes class variables for relevant connections and cursors
         self.__Conn = sqlite3.connect("Databases/LibraryData.db")
         self.__Curs = self.__Conn.cursor()
         self.__AM = AccountManager()
         self.__LogFile = open("Log.txt", "a")
+        self.__OnLoanLocation = 1
 
     def __del__(self):
         self.__Conn.commit()
@@ -479,44 +479,129 @@ class LibraryManager:
                 "SELECT ISBN, Quantity FROM Reservations WHERE URID = ?",
                 (URID,)
             )
-            result = self.__Curs.fetchone()
-            if not result:
-                return "Reservation not found."
-            ISBN = result[0]
-            Quantity = result[1]
+            Result = self.__Curs.fetchone()
+            if not Result:
+                return "Reservation not found."  
+            BookISBN = Result[0]
+            QuantityRemaining = Result[1]
             self.__Curs.execute(
-                "SELECT CurrentLocationID FROM Copies WHERE ISBN = ? AND Status IN ('Available') AND CurrentLocationID > 1",
-                (ISBN,)
+                "SELECT CurrentLocationID FROM Copies WHERE ISBN = ? AND Status = 'Available' AND CurrentLocationID != ?",
+                (BookISBN, self.__OnLoanLocation)
             )
-            Locations = self.__Curs.fetchall()
+            RawCopies = self.__Curs.fetchall()
             LocationCounts = []
-            for Location in Locations:
-                ULocID = Location[0]
+            for Row in RawCopies:
+                ULocID = Row[0]
                 Found = False
-                for LC in LocationCounts:
-                    if LC[0] == ULocID:
-                        LC[1] += 1
+                for Entry in LocationCounts:
+                    if Entry[0] == ULocID:
+                        Entry[1] += 1
                         Found = True
                         break
                 if not Found:
                     LocationCounts.append([ULocID, 1])
-    
-            LocationCounts.sort(key = lambda x: x[1], reverse = True)
-        
-
+            SortedLocations = self.MergeSort(LocationCounts)
+            PickList = []
+            for RoomData in SortedLocations:
+                if QuantityRemaining <= 0:
+                    break
+                RoomID = RoomData[0]
+                AvailableInRoom = RoomData[1]
+                self.__Curs.execute("SELECT RoomName FROM Locations WHERE ULocID = ?", (RoomID,))
+                RoomNameResult = self.__Curs.fetchone()
+                RoomName = RoomNameResult[0] if RoomNameResult else f"Unknown Room ({RoomID})"
+                AmountToTake = min(AvailableInRoom, QuantityRemaining)
+                PickList.append([RoomName, AmountToTake])
+                QuantityRemaining -= AmountToTake
+            if QuantityRemaining > 0:
+                return f"Insufficient stock. Need {QuantityRemaining} more copies."
+            return PickList
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
             
 
-# Needed:
-# Getter methods
-# Search methods
-# Update methods
-# delete methods
-# reservation stock finder
-# return methods
-# overdue methods
-# bulk book input
-# reservation cleanup
-# loan cleanup
+    def __MergeSort(self, UnsortedList):
+        if len(UnsortedList) <= 1:
+            return UnsortedList
+        MiddleIndex = len(UnsortedList) // 2
+        LeftHalf = self.__MergeSort(UnsortedList[:MiddleIndex])
+        RightHalf = self.__MergeSort(UnsortedList[MiddleIndex:])
+        return self.__Merge(LeftHalf, RightHalf)
 
-testarray = [[3, "C"], [1, "A"], [2, "B"]]
-print(LibraryManager().MergeSort2D(testarray))
+
+    def __Merge(self, LeftSide, RightSide):
+        MergedList = []
+        LeftPointer = 0
+        RightPointer = 0
+        while LeftPointer < len(LeftSide) and RightPointer < len(RightSide):
+            if LeftSide[LeftPointer][1] >= RightSide[RightPointer][1]:
+                MergedList.append(LeftSide[LeftPointer])
+                LeftPointer += 1
+            else:
+                MergedList.append(RightSide[RightPointer])
+                RightPointer += 1
+        MergedList.extend(LeftSide[LeftPointer:])
+        MergedList.extend(RightSide[RightPointer:])      
+        return MergedList
+    
+    def SearchBooks(self, SearchTerm):
+        try:
+            Term = f"%{SearchTerm}%"
+            Query = """
+                SELECT Books.ISBN, Books.Title, Authors.Surname, Books.Genre
+                FROM Books
+                JOIN BooksAuthors ON Books.ISBN = BooksAuthors.ISBN
+                JOIN Authors ON BooksAuthors.UAID = Authors.UAID
+                WHERE Books.Title LIKE ? OR Authors.Surname LIKE ? OR Books.ISBN LIKE ?
+            """
+            self.__Curs.execute(Query, (Term, Term, Term))
+            Results = self.__Curs.fetchall()
+            return Results if Results else f"Could not find any books matching '{SearchTerm}'."
+        except Exception as e:
+            return f"Search Error: {e}"
+        
+    def SearchReservations(self, SearchTerm):
+        try:
+            Term = f"%{SearchTerm}%"
+            Query = """
+                SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity
+                FROM Reservations
+                JOIN Books ON Reservations.ISBN = Books.ISBN
+                WHERE Books.Title LIKE ? OR CAST(Reservations.URID AS TEXT) LIKE ?
+            """
+            self.__Curs.execute(Query, (Term, Term))
+            Results = self.__Curs.fetchall()
+            return Results if Results else f"Could not find any reservations matching '{SearchTerm}'."
+        except Exception as e:
+            return f"Search Error: {e}"
+        
+    def SearchCopies(self, SearchTerm):
+        try:
+            Term = f"%{SearchTerm}%"
+            Query = """
+                SELECT Copies.UCID, Books.Title, Copies.Status, Copies.Condition
+                FROM Copies
+                JOIN Books ON Copies.ISBN = Books.ISBN
+                WHERE CAST(Copies.UCID AS TEXT) LIKE ? OR Books.Title LIKE ?
+            """
+            self.__Curs.execute(Query, (Term, Term))
+            Results = self.__Curs.fetchall()
+            return Results if Results else f"Could not find any book copies matching '{SearchTerm}'."
+        except Exception as e:
+            return f"Search Error: {e}"
+        
+    def SearchLocations(self, SearchTerm):
+        try:
+            Term = f"%{SearchTerm}%"
+            Query = "SELECT ULocID, ClassCode FROM Locations WHERE ClassCode LIKE ?"
+            self.__Curs.execute(Query, (Term,))
+            Results = self.__Curs.fetchall()
+            return Results if Results else f"Could not find a location matching '{SearchTerm}'."
+        except Exception as e:
+            return f"Search Error: {e}"
+        
+    
+
+
+LM = LibraryManager()

@@ -14,3 +14,15 @@ Example Teacher account:
 10D to 13D = prefix 978
 13D ISBNs have a check digit (total of 13D) calculated by:
 10-((x1 + 3x2 + x3 + 3x4 ... + x11 +3x12) mod 10)
+
+
+# Needed:
+# Getter methods
+# Search methods
+# Update methods
+# delete methods
+# return methods
+# overdue methods
+# bulk book input
+# reservation cleanup
+# loan cleanup
