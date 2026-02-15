@@ -197,7 +197,7 @@ class LibraryManager:
 
     def AddLocation(self, ClassCode):
         try:
-            # Permission check
+            #Permission check
             if self.__AM.CheckPermission("Admin") != True:
                 return "Access Denied: Insufficient Permissions."
             ULocID = self.__AM.GetNextID(self.__Curs, "Locations", "ULocID")
@@ -297,7 +297,7 @@ class LibraryManager:
             if not Status or Status[0] != "Available":
                 return "Copy is not available for loan."
             # Get dates
-            LoanDate = Date = int(datetime.now().strftime("%Y%m%d"))
+            LoanDate = int(datetime.now().strftime("%Y%m%d"))
             DueDate = int((datetime.now() + timedelta(days = self.__AM.GetLoanPeriod())).strftime("%Y%m%d"))
             if not self.LoanStockConflictCheck(UCID, LoanDate, DueDate):
                 return "Loan cannot be issued due to stock conflicts with existing reservations or loans."
@@ -309,7 +309,7 @@ class LibraryManager:
             )
             # Update copy status
             self.__Curs.execute(
-                "UPDATE Copies SET Status = 'On Loan' WHERE UCID = ?",
+                "UPDATE Copies SET Status = 'On Loan', CurrentLocationID = 1 WHERE UCID = ?",
                 (UCID,)
             )
             self.__Conn.commit()
@@ -344,7 +344,7 @@ class LibraryManager:
             )
             # Update copy status
             self.__Curs.execute(
-                "UPDATE Copies SET Status = 'Available' WHERE UCID = ?",
+                "UPDATE Copies SET Status = 'Available', CurrentLocationID = HomeLocationID WHERE UCID = ?",
                 (UCID,)
             )
             self.__Conn.commit()
@@ -464,6 +464,7 @@ class LibraryManager:
 
 
     def NotifyUser(self, Message):
+        # Should probably change this to push email notifications in the future, but for now this will do
         notification = Notify()
         notification.title = "School Library"
         notification.message = Message
@@ -472,7 +473,38 @@ class LibraryManager:
         notification.send()
 
 
+    def FindReservationStock(self, URID):
+        try:
+            self.__Curs.execute(
+                "SELECT ISBN, Quantity FROM Reservations WHERE URID = ?",
+                (URID,)
+            )
+            result = self.__Curs.fetchone()
+            if not result:
+                return "Reservation not found."
+            ISBN = result[0]
+            Quantity = result[1]
+            self.__Curs.execute(
+                "SELECT CurrentLocationID FROM Copies WHERE ISBN = ? AND Status IN ('Available') AND CurrentLocationID > 1",
+                (ISBN,)
+            )
+            Locations = self.__Curs.fetchall()
+            LocationCounts = []
+            for Location in Locations:
+                ULocID = Location[0]
+                Found = False
+                for LC in LocationCounts:
+                    if LC[0] == ULocID:
+                        LC[1] += 1
+                        Found = True
+                        break
+                if not Found:
+                    LocationCounts.append([ULocID, 1])
+    
+            LocationCounts.sort(key = lambda x: x[1], reverse = True)
+        
 
+            
 
 # Needed:
 # Getter methods
@@ -485,3 +517,6 @@ class LibraryManager:
 # bulk book input
 # reservation cleanup
 # loan cleanup
+
+testarray = [[3, "C"], [1, "A"], [2, "B"]]
+print(LibraryManager().MergeSort2D(testarray))
