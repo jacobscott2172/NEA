@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS Books(
               ISBN INTEGER PRIMARY KEY NOT NULL, 
               Title TEXT NOT NULL,
               Genre TEXT,
-              Subject TEXT,
+              Subject TEXT
               )''')
 
 # Creates the table which links books and authors
@@ -169,6 +169,10 @@ conn2.commit()
 curs2.execute('''
            CREATE TABLE IF NOT EXISTS Notifications(
            UNID INTEGER PRIMARY KEY NOT NULL,
+           UStaID INTEGER NOT NULL
            NotifBody TEXT NOT NULL,
-           Delivered BOOLEAN NOT NULL DEFAULT FALSE
+           Delivered BOOLEAN NOT NULL DEFAULT FALSE,
+           FOREIGN KEY (UStaID) REFERENCES Staff(UStaID)
             )''')
+
+conn2.commit()
