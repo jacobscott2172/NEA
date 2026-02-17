@@ -565,9 +565,21 @@ class AccountManager:
     
     def GetCurrentUser(self):
         return self.__CurrentUser
-    
+  
     def GetCurrentAccessLevel(self):
         return self.__CurrentAccessLevel
+
+    def GetLoanPeriod(self):
+        try:
+            # Finds and returns the default loan period
+            self.__SysCurs.execute(
+                "SELECT SettingValue FROM Settings WHERE SettingName = 'DefaultLoanPeriod'",
+            )
+            return int(self.__SysCurs.fetchone()[0])
+        except Exception as e:
+            self.Log(f"Error retrieving loan period: {e}")
+            # Otherwise, returns a reasonable loan period
+            return 14
 
 # --- Checking methods ---
     def CheckPermission(self, NecessaryPerms):
