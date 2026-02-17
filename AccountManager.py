@@ -201,7 +201,7 @@ class AccountManager:
             # Deletes students, Also ensures that inactive accounts cannot be deleted if they have outstanding loans
             self.__LibCurs.execute("""
                 DELETE FROM Students WHERE AccountActive = 0 AND InactiveDate < ? 
-                AND UStuID NOT IN (SELECT BorrowerID FROM Loans WHERE ReturnedDate IS NULL)""", 
+                AND UStuID NOT IN (SELECT UStuID FROM Loans WHERE ReturnDate IS NULL)""", 
                 (CutOffDate,)
                 )
             # Counts deleted accounts
@@ -244,7 +244,7 @@ class AccountManager:
             )
             self.__SysConn.commit()
             self.Log(f"User {self.__CurrentUser} changed password for staff member {ID}")
-            return "Passowrd changed"
+            return "Password changed"
         # Error handling and logging
         except Exception as e:
             self.Log(f"User {self.__CurrentUser} attempted to change password for staff member {ID} and encountered an error: {e}")
@@ -267,7 +267,7 @@ class AccountManager:
                 self.Log(f"{self.__CurrentUser} attempted to set {AccType} account {ID} to {StatusStr}: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
             # Typo check
-            if not self.CheckIDExists(Curs, "Staff", "UStaID", ID):
+            if not self.CheckIDExists(Curs, Table, IDCol, ID):
                 self.Log(f"{self.__CurrentUser} attempted to change the status of a {AccType} account to {StatusStr}: Input ID ({ID}) does not exist")
                 return "Error: ID does not exist"
             # Updates data
@@ -322,7 +322,7 @@ class AccountManager:
             return f"Promoted successfully to {NewLevel}"
         # Error Handling
         except Exception as e:
-            self.Log(f"User {self.__CurrentUser} attempted to promote staff member {ID} to {NewLevel} and encountered an error: {e}")
+            self.Log(f"User {self.__CurrentUser} attempted to promote staff member {ID} and encountered an error: {e}")
             return f"System error: {e}"
           
     def DemoteStaff (self, ID):
@@ -363,7 +363,7 @@ class AccountManager:
             return f"Demoted successfully to {NewLevel}"
         # Error Handling
         except Exception as e:
-            self.Log(f"User {self.__CurrentUser} attempted to demote   staff member {ID} to {NewLevel} and encountered an error: {e}")
+            self.Log(f"User {self.__CurrentUser} attempted to demote   staff member {ID} and encountered an error: {e}")
             return f"System error: {e}"
 
 # --- Default settings editing ---
