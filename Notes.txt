@@ -18,7 +18,6 @@ Example Teacher account:
 
 # Needed:
 # Getter methods
-# Search methods
 # Update methods
 # delete methods
 # return methods
@@ -26,3 +25,4 @@ Example Teacher account:
 # bulk book input
 # reservation cleanup
 # loan cleanup
+# whetever the fuck is going on with the notification system

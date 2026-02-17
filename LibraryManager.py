@@ -1,7 +1,6 @@
 import sqlite3
 from AccountManager import AccountManager
 from datetime import datetime, timedelta
-from notifypy import Notify
 class LibraryManager:
 
 
@@ -11,6 +10,7 @@ class LibraryManager:
         self.__AM = AccountManager()
         self.__LogFile = open("Log.txt", "a")
         self.__OnLoanLocation = 1
+
 
     def __del__(self):
         self.__Conn.commit()
@@ -97,7 +97,7 @@ class LibraryManager:
                 return (True, "Valid ISBN")
 
 
-    def AddBook(self, ISBN, Title, Genre, Subject, LearnerLevel, YearGroup):
+    def AddBook(self, ISBN, Title, Genre, Subject):
         try:
             # Permission check
             if self.__AM.CheckPermission("Teacher") != True:
@@ -117,8 +117,8 @@ class LibraryManager:
                 return ExistingBook[0]
             # Inserts book
             self.__Curs.execute(
-                "INSERT INTO Books (ISBN, Title, Genre, Subject, LearnerLevel, YearGroup) VALUES (?, ?, ?, ?, ?, ?)",
-                (ISBN, Title, Genre, Subject, LearnerLevel, YearGroup)
+                "INSERT INTO Books (ISBN, Title, Genre, Subject) VALUES (?, ?, ?, ?, ?, ?)",
+                (ISBN, Title, Genre, Subject)
             )
             self.__Conn.commit()
             self.__AM.Log(f"{self.__AM.GetCurrentUser()} added book {ISBN}")
@@ -173,7 +173,7 @@ class LibraryManager:
             return f"System error: {e}"
 
 
-    def StreamlinedAddBook(self, ISBN, Title, Genre, Subject, LearnerLevel, YearGroup, ForenameList, MiddlenameList, SurnameList):
+    def StreamlinedAddBook(self, ISBN, Title, Genre, Subject, ForenameList, MiddlenameList, SurnameList):
         try:
             UAIDList = []
             for x in range(len(ForenameList)):
@@ -185,7 +185,7 @@ class LibraryManager:
                     return AuthorID  # Return error message if AddAuthor failed
                 else:
                     UAIDList.append(AuthorID)
-            BookID = self.AddBook(ISBN, Title, Genre, Subject, LearnerLevel, YearGroup)
+            BookID = self.AddBook(ISBN, Title, Genre, Subject)
             if isinstance(BookID, str):
                 return BookID  # Return error message if AddBook failed
             self.LinkBookAuthors(BookID, UAIDList)
@@ -239,15 +239,15 @@ class LibraryManager:
             return f"System error: {e}"
 
 
-    def AddCopy(self, ISBN, ULocID, Condition):
+    def AddCopy(self, ISBN, ULocID):
         try:
             # Permission check
             if self.__AM.CheckPermission("Teacher") != True:
                 return "Access Denied: Insufficient Permissions."
             UCID = self.__AM.GetNextID(self.__Curs, "Copies", "UCID")
             self.__Curs.execute(
-                "INSERT INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID, Status, Condition) VALUES (?, ?, ?, ?, ?, ?)",
-                (UCID, ISBN, ULocID, ULocID, "Available", Condition)
+                "INSERT INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID, Status) VALUES (?, ?, ?, ?, ?, ?)",
+                (UCID, ISBN, ULocID, ULocID, "Available")
             )
             self.__Conn.commit()
             self.__AM.Log(f"{self.__AM.GetCurrentUser()} added copy {UCID} of book {ISBN}")
@@ -463,16 +463,6 @@ class LibraryManager:
             return f"System error: {e}"
 
 
-    def NotifyUser(self, Message):
-        # Should probably change this to push email notifications in the future, but for now this will do
-        notification = Notify()
-        notification.title = "School Library"
-        notification.message = Message
-        notification.icon = "Media/library-symbol-square.jpg"
-        notification.audio = "Media/NotifySound.wav"
-        notification.send()
-
-
     def FindReservationStock(self, URID):
         try:
             self.__Curs.execute(
@@ -545,6 +535,7 @@ class LibraryManager:
         MergedList.extend(RightSide[RightPointer:])      
         return MergedList
     
+
     def SearchBooks(self, SearchTerm):
         try:
             Term = f"%{SearchTerm}%"
@@ -561,6 +552,7 @@ class LibraryManager:
         except Exception as e:
             return f"Search Error: {e}"
         
+
     def SearchReservations(self, SearchTerm):
         try:
             Term = f"%{SearchTerm}%"
@@ -576,6 +568,7 @@ class LibraryManager:
         except Exception as e:
             return f"Search Error: {e}"
         
+
     def SearchCopies(self, SearchTerm):
         try:
             Term = f"%{SearchTerm}%"
@@ -591,6 +584,7 @@ class LibraryManager:
         except Exception as e:
             return f"Search Error: {e}"
         
+
     def SearchLocations(self, SearchTerm):
         try:
             Term = f"%{SearchTerm}%"

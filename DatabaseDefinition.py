@@ -47,8 +47,6 @@ CREATE TABLE IF NOT EXISTS Books(
               Title TEXT NOT NULL,
               Genre TEXT,
               Subject TEXT,
-              LearnerLevel TEXT,
-              YearGroup TEXT
               )''')
 
 # Creates the table which links books and authors
@@ -82,7 +80,6 @@ CREATE TABLE IF NOT EXISTS Copies(
               HomeLocationID INTEGER NOT NULL,
               CurrentLocationID INTEGER,
               Status TEXT NOT NULL,
-              Condition TEXT NOT NULL,
               FOREIGN KEY (ISBN) REFERENCES Books(ISBN),
               FOREIGN KEY (HomeLocationID) REFERENCES Locations(ULocID),
               FOREIGN KEY (CurrentLocationID) REFERENCES Locations(ULocID)
@@ -166,3 +163,12 @@ curs2.execute('''
               ''')
 
 conn2.commit()
+
+# unplanned
+# this stores notifications, when a user logs in notifications for their reservations are generated
+curs2.execute('''
+           CREATE TABLE IF NOT EXISTS Notifications(
+           UNID INTEGER PRIMARY KEY NOT NULL,
+           NotifBody TEXT NOT NULL,
+           Delivered BOOLEAN NOT NULL DEFAULT FALSE
+            )''')
