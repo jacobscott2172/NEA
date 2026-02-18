@@ -4,19 +4,22 @@ from datetime import datetime, timedelta
 class LibraryManager:
 
 
-    def __init__ (self):
+    def __init__ (self, AM):
         self.__Conn = sqlite3.connect("Databases/LibraryData.db")
         self.__Curs = self.__Conn.cursor()
-        self.__AM = AccountManager()
+        self.__AM = AM
         self.__LogFile = open("Log.txt", "a")
         self.__OnLoanLocation = 1
 
 
     def __del__(self):
-        self.__Conn.commit()
-        self.__Conn.close()
-        self.__LogFile.flush()
-        self.__LogFile.close()
+        try:
+            self.__Conn.commit()
+            self.__Conn.close()
+            self.__LogFile.flush()
+            self.__LogFile.close()
+        except AttributeError:
+            pass
 
 
     def AddAuthor(self, Forename, Middlename, Surname):
@@ -27,7 +30,7 @@ class LibraryManager:
                 return "Access Denied: Insufficient Permissions."
             # Duplicate check
             self.__Curs.execute(
-                "SELECT UAID FROM Authors WHERE Forename = ? AND Middlename = ? AND Surname = ?",
+                "SELECT UAID FROM Authors WHERE Forename = ? AND Middlenames = ? AND Surname = ?",
                 (Forename, Middlename, Surname)
             )
             ExistingAuthor = self.__Curs.fetchone()
@@ -38,7 +41,7 @@ class LibraryManager:
             ID = self.__AM.GetNextID(self.__Curs, "Authors", "UAID")
             # Inserts author
             self.__Curs.execute(
-                "INSERT INTO Authors (UAID, Forename, Middlename, Surname) VALUES (?, ?, ?, ?)",
+                "INSERT INTO Authors (UAID, Forename, Middlenames, Surname) VALUES (?, ?, ?, ?)",
                 (ID, Forename, Middlename, Surname)
             )
             # Commits, Logs, Returns confirmation
@@ -117,7 +120,7 @@ class LibraryManager:
                 return ExistingBook[0]
             # Inserts book
             self.__Curs.execute(
-                "INSERT INTO Books (ISBN, Title, Genre, Subject) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO Books (ISBN, Title, Genre, Subject) VALUES (?, ?, ?, ?)",
                 (ISBN, Title, Genre, Subject)
             )
             self.__Conn.commit()
@@ -246,7 +249,7 @@ class LibraryManager:
                 return "Access Denied: Insufficient Permissions."
             UCID = self.__AM.GetNextID(self.__Curs, "Copies", "UCID")
             self.__Curs.execute(
-                "INSERT INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID, Status) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID, Status) VALUES (?, ?, ?, ?, ?)",
                 (UCID, ISBN, ULocID, ULocID, "Available")
             )
             self.__Conn.commit()
@@ -490,14 +493,14 @@ class LibraryManager:
                         break
                 if not Found:
                     LocationCounts.append([ULocID, 1])
-            SortedLocations = self.MergeSort(LocationCounts)
+            SortedLocations = self.__MergeSort(LocationCounts)
             PickList = []
             for RoomData in SortedLocations:
                 if QuantityRemaining <= 0:
                     break
                 RoomID = RoomData[0]
                 AvailableInRoom = RoomData[1]
-                self.__Curs.execute("SELECT RoomName FROM Locations WHERE ULocID = ?", (RoomID,))
+                self.__Curs.execute("SELECT ClassCode FROM Locations WHERE ULocID = ?", (RoomID,))
                 RoomNameResult = self.__Curs.fetchone()
                 RoomName = RoomNameResult[0] if RoomNameResult else f"Unknown Room ({RoomID})"
                 AmountToTake = min(AvailableInRoom, QuantityRemaining)
@@ -507,7 +510,7 @@ class LibraryManager:
                 return f"Insufficient stock. Need {QuantityRemaining} more copies."
             return PickList
         except Exception as e:
-            print(f"Error: {e}")
+            self.__AM.Log(f"User {self.__AM.GetCurrentUser()} encountered an error in FindReservationStock: {e}")
             return None
             
 
@@ -573,7 +576,7 @@ class LibraryManager:
         try:
             Term = f"%{SearchTerm}%"
             Query = """
-                SELECT Copies.UCID, Books.Title, Copies.Status, Copies.Condition
+                SELECT Copies.UCID, Books.Title, Copies.Status
                 FROM Copies
                 JOIN Books ON Copies.ISBN = Books.ISBN
                 WHERE CAST(Copies.UCID AS TEXT) LIKE ? OR Books.Title LIKE ?
@@ -598,4 +601,4 @@ class LibraryManager:
     
 
 
-LM = LibraryManager()
+LM = LibraryManager(AM)
