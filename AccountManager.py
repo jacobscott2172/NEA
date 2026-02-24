@@ -633,4 +633,33 @@ class AccountManager:
         # Public method for making checks within the SystemConfig file, as LibraryManager will not have access to this
         return self.IsAccountActive(self.__SysCurs, "Staff", "UStaID", ID)
 
+# --- Search Methods ---
+    def SearchStaff(self, SearchTerm):
+        try:
+            Term = f"%{SearchTerm}%"
+            Query = """
+                SELECT UStaID, Forename, Surname
+                FROM Staff
+                WHERE Forename LIKE ? OR Surname LIKE ? OR CAST(UStaID AS TEXT) LIKE ?
+            """
+            self.__SysCurs.execute(Query, (Term, Term, Term))
+            Results = self.__SysCurs.fetchall()
+            return Results if Results else f"Could not find a staff member matching '{SearchTerm}'."
+        except Exception as e:
+            return f"Search Error: {e}"
+        
+    def SearchStudents(self, SearchTerm):
+        try:
+            Term = f"%{SearchTerm}%"
+            Query = """
+                SELECT UStuID, Forename, Surname
+                FROM Students
+                WHERE Forename LIKE ? OR Surname LIKE ? OR CAST(UStuID AS TEXT) LIKE ?
+            """
+            self.__LibCurs.execute(Query, (Term, Term, Term))
+            Results = self.__LibCurs.fetchall()
+            return Results if Results else f"Could not find a student matching '{SearchTerm}'."
+        except Exception as e:
+            return f"Search Error: {e}"
+        
 AM = AccountManager()

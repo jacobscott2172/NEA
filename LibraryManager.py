@@ -465,7 +465,8 @@ class LibraryManager:
             self.__AM.Log(f"Conflict Check Error: {e}")
             return f"System error: {e}"
 
-
+# This needs fixing
+# Needs to return exact copy numbers, then set those copies to reserved
     def FindReservationStock(self, URID):
         try:
             self.__Curs.execute(
@@ -598,7 +599,39 @@ class LibraryManager:
         except Exception as e:
             return f"Search Error: {e}"
         
-    
+
+    def SearchAuthors(self, SearchTerm):
+        try:
+            Term = f"%{SearchTerm}%"
+            Query = """
+                SELECT UAID, Forename, Middlenames, Surname
+                FROM Authors
+                WHERE Forename LIKE ? OR Middlenames LIKE ? OR Surname LIKE ?
+            """
+            self.__Curs.execute(Query, (Term, Term, Term))
+            Results = self.__Curs.fetchall()
+            return Results if Results else f"Could not find an author matching '{SearchTerm}'."
+        except Exception as e:
+            return f"Search Error: {e}"
+        
+# Add search by student name/ID
+    def SearchLoans(self, SearchTerm):
+        try:
+            Term = f"%{SearchTerm}%"
+            Query = """
+                SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate
+                FROM Loans
+                JOIN Copies ON Loans.UCID = Copies.UCID
+                JOIN Books ON Copies.ISBN = Books.ISBN
+                WHERE CAST(Loans.ULoanID AS TEXT) LIKE ? OR Books.Title LIKE ?
+            """
+            self.__Curs.execute(Query, (Term, Term))
+            Results = self.__Curs.fetchall()
+            return Results if Results else f"Could not find a loan matching '{SearchTerm}'."
+        except Exception as e:
+            return f"Search Error: {e}"
+
+
 
 
 LM = LibraryManager(AM)
