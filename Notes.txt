@@ -12,12 +12,11 @@ Example Teacher account:
 
 
 # Needed:
+# Update methods - Done?
+# delete methods - Done?
 # Getter methods
-# Update methods
-# delete methods
-# return methods
-# overdue methods
 # bulk copy input
 # reservation cleanup
 # loan cleanup
-# whetever the fuck is going on with the notification system
+# whetever the  is going on with the notification system
+# overdue methods
