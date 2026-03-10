@@ -11,9 +11,10 @@ Example Teacher account:
  - Password = password
 
 
-# Needed:
+# TODO:
 # --- LibraryManager ---
-# URGENT - have Librarymanager inherit accountmanager (if possible)
+# first, check everything works and does as it says it does.
+# have Librarymanager inherit accountmanager (if possible)
 # Update methods - Done?
 # delete methods - Done?
 # Getter methods - Done?
