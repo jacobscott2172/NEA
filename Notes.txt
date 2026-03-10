@@ -12,11 +12,25 @@ Example Teacher account:
 
 
 # Needed:
+# --- LibraryManager ---
+# URGENT - have Librarymanager inherit accountmanager (if possible)
 # Update methods - Done?
 # delete methods - Done?
-# Getter methods
-# bulk copy input
+# Getter methods - Done?
+# bulk copy input - Done?
 # reservation cleanup
 # loan cleanup
-# whetever the  is going on with the notification system
-# overdue methods
+# whetever is going on with the notification system (push email) incl. notifications 2 teachers for reservation stock
+# overdue methods incl. notifications 2 students for overdues (add student email to "Students" table)
+# ensure clarity (e.g GetBookDetails also gives the author of the book, Loans also attatch student name)
+# formatting (comments, indentation etc)
+# --- Report ---
+# Backend objectives
+# Frontend objectives
+# --- Main ---
+# Code Frontend (incl comments)
+# --- All ---
+# Remove unused methods
+# ensure procedures - everything is logged and permission checked at some point between button press and result
+# --- Report ---
+# Ensure all diagrams and objectives match current program
