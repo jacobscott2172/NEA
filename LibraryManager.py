@@ -7,7 +7,7 @@ class LibraryManager:
 	def __init__ (self, AM):
 		self.__Conn = sqlite3.connect("Databases/LibraryData.db")
 		self.__Curs = self.__Conn.cursor()
-		self.__AM = AccountManager()
+		self.__AM = AM
 		self.__LogFile = open("Log.txt", "a")
 		self.__OnLoanLocation = 1
 
@@ -360,9 +360,9 @@ class LibraryManager:
 			# Update copy status
 			self.__Curs.execute("""
 					UPDATE Copies 
-					SET Status = 'On Loan', CurrentLocationID = 1 
+					SET Status = 'On Loan', CurrentLocationID = ? 
 					WHERE UCID = ?
-				""",(UCID,))
+				""",(self.__OnLoanLocation, UCID))
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} issued loan {ULoanID} of copy {UCID} to student {UStuID}")
 			return "Loan issued successfully"
@@ -519,8 +519,6 @@ class LibraryManager:
 			self.__AM.Log(f"Conflict Check Error: {e}")
 			return f"System error: {e}"
 
-# This needs fixing
-# Needs to return exact copy numbers, then set those copies to reserved
 	def FindReservationStock(self, URID):
 		try:
 			self.__Curs.execute("""
@@ -534,14 +532,16 @@ class LibraryManager:
 			BookISBN = Result[0]
 			QuantityRemaining = Result[1]
 			self.__Curs.execute("""
-					SELECT CurrentLocationID 
+					SELECT UCID, CurrentLocationID 
 					FROM Copies 
 					WHERE ISBN = ? AND Status = 'Available' AND CurrentLocationID != ?
 				""",(BookISBN, self.__OnLoanLocation))
 			RawCopies = self.__Curs.fetchall()
 			LocationCounts = []
+			CopyIDsByLocation = {}
 			for Row in RawCopies:
-				ULocID = Row[0]
+				RowUCID = Row[0]
+				ULocID = Row[1]
 				Found = False
 				for Entry in LocationCounts:
 					if Entry[0] == ULocID:
@@ -550,8 +550,12 @@ class LibraryManager:
 						break
 				if not Found:
 					LocationCounts.append([ULocID, 1])
+				if ULocID not in CopyIDsByLocation:
+					CopyIDsByLocation[ULocID] = []
+				CopyIDsByLocation[ULocID].append(RowUCID)
 			SortedLocations = self.__MergeSort(LocationCounts)
 			PickList = []
+			ReservedUCIDs = []
 			for RoomData in SortedLocations:
 				if QuantityRemaining <= 0:
 					break
@@ -565,10 +569,19 @@ class LibraryManager:
 				RoomNameResult = self.__Curs.fetchone()
 				RoomName = RoomNameResult[0] if RoomNameResult else f"Unknown Room ({RoomID})"
 				AmountToTake = min(AvailableInRoom, QuantityRemaining)
-				PickList.append([RoomName, AmountToTake])
+				TakenUCIDs = CopyIDsByLocation[RoomID][:AmountToTake]
+				PickList.append(TakenUCIDs + [RoomName])
+				ReservedUCIDs.extend(TakenUCIDs)
 				QuantityRemaining -= AmountToTake
 			if QuantityRemaining > 0:
 				return f"Insufficient stock. Need {QuantityRemaining} more copies."
+			for ReservedUCID in ReservedUCIDs:
+				self.__Curs.execute("""
+						UPDATE Copies 
+						SET Status = 'Reserved' 
+						WHERE UCID = ?
+					""", (ReservedUCID,))
+			self.__Conn.commit()
 			return PickList
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} encountered an error in FindReservationStock: {e}")
@@ -579,12 +592,12 @@ class LibraryManager:
 		try:
 			Term = f"%{SearchTerm}%"
 			self.__Curs.execute( """
-				SELECT Books.ISBN, Books.Title, Authors.Surname, Books.Genre, Books.Subject, Books.LearnerLevel, Books.YearGroup
+				SELECT Books.ISBN, Books.Title, Authors.Surname, Books.Genre, Books.Subject
 				FROM Books
 				JOIN BooksAuthors ON Books.ISBN = BooksAuthors.ISBN
 				JOIN Authors ON BooksAuthors.UAID = Authors.UAID
-				WHERE Books.Title LIKE ? OR Authors.Surname LIKE ? OR Books.ISBN LIKE ? OR Books.Genre LIKE ? OR Books.Subject LIKE ? OR Books.LearnerLevel LIKE ? OR Books.YearGroup LIKE ?
-			""", (Term, Term, Term, Term, Term, Term, Term))
+				WHERE Books.Title LIKE ? OR Authors.Surname LIKE ? OR Books.ISBN LIKE ? OR Books.Genre LIKE ? OR Books.Subject LIKE ?
+			""", (Term, Term, Term, Term, Term))
 			Results = self.__Curs.fetchall()
 			return Results if Results else f"Could not find any books matching '{SearchTerm}'."
 		except Exception as e:
@@ -707,7 +720,6 @@ class LibraryManager:
 
 
 # --- Getter Methods --- 
-
 	def GetAuthorDetails(self, UAID):
 		try:
 			self.__Curs.execute("""
@@ -716,7 +728,7 @@ class LibraryManager:
 				WHERE UAID = ?
 			""", (UAID,))
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved details for author {UAID}")
-			return self.__SysCurs.fetchone()
+			return self.__Curs.fetchone()
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve details for author {UAID} and encountered an error: {e}")
 			return f"System error: {e}"
@@ -725,7 +737,7 @@ class LibraryManager:
 	def GetBookDetails(self, ISBN):
 		try:
 			self.__Curs.execute("""
-				SELECT Books.ISBN, Books.Title, Authors.Forename, Authors.Middlenames, Authors.Surname, Books.Genre, Books.Subject, Books.LearnerLevel, Books.YearGroup
+				SELECT Books.ISBN, Books.Title, Authors.Forename, Authors.Middlenames, Authors.Surname, Books.Genre, Books.Subject
 				FROM Books
 				JOIN BooksAuthors ON Books.ISBN = BooksAuthors.ISBN
 				JOIN Authors ON BooksAuthors.UAID = Authors.UAID
@@ -830,7 +842,7 @@ class LibraryManager:
 	def GetAllBooks(self):
 		try:
 			self.__Curs.execute("""
-				SELECT ISBN, Title, Genre, Subject, LearnerLevel, YearGroup
+				SELECT ISBN, Title, Genre, Subject
 				FROM Books
 			""")
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all books")
@@ -992,4 +1004,4 @@ class LibraryManager:
 
  
  
-LM = LibraryManager()
+LM = LibraryManager(AM)

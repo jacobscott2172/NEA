@@ -153,12 +153,12 @@ curs2.execute('''
               )''')
 
 curs2.execute('''
-              INSERT INTO Settings (SettingName, SettingValue)
+              INSERT OR IGNORE INTO Settings (SettingName, SettingValue)
               VALUES ('DefaultMaxLoans', '3')
               ''')
 
 curs2.execute('''
-              INSERT INTO Settings (SettingName, SettingValue)
+              INSERT OR IGNORE INTO Settings (SettingName, SettingValue)
               VALUES ('DefaultLoanPeriod', '14')
               ''')
 
@@ -169,7 +169,7 @@ conn2.commit()
 curs2.execute('''
            CREATE TABLE IF NOT EXISTS Notifications(
            UNID INTEGER PRIMARY KEY NOT NULL,
-           UStaID INTEGER NOT NULL
+           UStaID INTEGER NOT NULL,
            NotifBody TEXT NOT NULL,
            Delivered BOOLEAN NOT NULL DEFAULT FALSE,
            FOREIGN KEY (UStaID) REFERENCES Staff(UStaID)
