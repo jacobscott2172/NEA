@@ -588,31 +588,31 @@ class AccountManager:
 			# Otherwise, returns a reasonable loan period
 			return 14
 
-		def GetRetentionMonths(self):
-			try:
+	def GetRetentionMonths(self):
+		try:
 				# Finds and returns the default data retention period in months
 				self.__SysCurs.execute(
 					"SELECT SettingValue FROM Settings WHERE SettingName = 'DefaultRetentionMonths'",
 				)
 				return int(self.__SysCurs.fetchone()[0])
-			except Exception as e:
+		except Exception as e:
 				self.Log(f"Error retrieving retention months: {e}")
 				# Otherwise, returns a reasonable retention period
 				return 6
 
-		def GetSMTPSettings(self):
-			try:
+	def GetSMTPSettings(self):
+		try:
 				# Retrieves all SMTP settings as a dictionary
 				self.__SysCurs.execute(
 					"SELECT SettingName, SettingValue FROM Settings WHERE SettingName IN ('SMTPHost', 'SMTPPort', 'SMTPUser', 'SMTPPassword', 'SMTPSender')"
 				)
 				return {row[0]: row[1] for row in self.__SysCurs.fetchall()}
-			except Exception as e:
+		except Exception as e:
 				self.Log(f"Error retrieving SMTP settings: {e}")
 				return {}
 
-		def SendEmail(self, ToAddress, Subject, Body):
-			try:
+	def SendEmail(self, ToAddress, Subject, Body):
+		try:
 				# Retrieves SMTP settings
 				SMTPSettings = self.GetSMTPSettings()
 				# Checks that all required settings are present and filled in
@@ -632,7 +632,7 @@ class AccountManager:
 					Server.sendmail(SMTPSettings["SMTPSender"], ToAddress, Message.as_string())
 				self.Log(f"Email sent to {ToAddress}: {Subject}")
 				return True
-			except Exception as e:
+		except Exception as e:
 				self.Log(f"Email send failed to {ToAddress}: {e}")
 				return f"System error: {e}"
 
@@ -706,6 +706,60 @@ class AccountManager:
 		except Exception as e:
 			return f"Search Error: {e}"
 		
+	def CreateNotification(self, UStaID, NotifBody):
+		try:
+			# Inserts a new undelivered notification for the given staff member
+			UNID = self.GetNextID(self.__SysCurs, "Notifications", "UNID")
+			self.__SysCurs.execute(
+					"INSERT INTO Notifications (UNID, UStaID, NotifBody, Delivered) VALUES (?, ?, ?, ?)",
+				(UNID, UStaID, NotifBody, False)
+			)
+			self.__SysConn.commit()
+			self.Log(f"Notification {UNID} created for staff member {UStaID}")
+			return True
+		except Exception as e:
+				self.Log(f"Error creating notification for staff member {UStaID}: {e}")
+				return f"System error: {e}"
+
+	def DeliverNotifications(self):
+		try:
+			# Fetches all undelivered notifications for the currently logged in user
+			self.__SysCurs.execute(
+				"SELECT UNID, NotifBody FROM Notifications WHERE UStaID = ? AND Delivered = ?",
+				(self.__CurrentUser, False)
+			)
+			Pending = self.__SysCurs.fetchall()
+			if not Pending:
+				return "No pending notifications."
+			# Retrieves the current user's email address
+			self.__SysCurs.execute(
+				"SELECT Email FROM Staff WHERE UStaID = ?",
+				(self.__CurrentUser,)
+			)
+			EmailRow = self.__SysCurs.fetchone()
+			if not EmailRow or not EmailRow[0]:
+				self.Log(f"Notification delivery skipped for user {self.__CurrentUser}: no email address on record")
+				return "No email address on record, notifications not delivered."
+			ToAddress = EmailRow[0]
+			# Sends each notification and marks it as delivered
+			Delivered = 0
+			for UNID, NotifBody in Pending:
+				Result = self.SendEmail(ToAddress, "Library System Notification", NotifBody)
+				if Result == True:
+						self.__SysCurs.execute(
+							"UPDATE Notifications SET Delivered = ? WHERE UNID = ?",
+							(True, UNID)
+						)
+						Delivered += 1
+				else:
+						self.Log(f"Failed to deliver notification {UNID} to {ToAddress}")
+			self.__SysConn.commit()
+			self.Log(f"Delivered {Delivered} of {len(Pending)} notifications to user {self.__CurrentUser}")
+			return f"Delivered {Delivered} of {len(Pending)} notifications."
+		except Exception as e:
+				self.Log(f"Error delivering notifications for user {self.__CurrentUser}: {e}")
+				return f"System error: {e}"
+
 	def SearchStudents(self, SearchTerm):
 		try:
 			Term = f"%{SearchTerm}%"

@@ -1,7 +1,6 @@
 import sqlite3
 from AccountManager import AccountManager
 from datetime import datetime, timedelta
-
 class LibraryManager:
 
 
@@ -411,12 +410,14 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to return a loan and encountered an error: {e}")
 			return f"System error: {e}"
 
-# check this carefully, may not work
 	def ClearOldLoans(self):
 		try:
 			# Permission check
 			if self.__AM.CheckPermission("Admin") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to clear old loans: Insufficient permissions")
 				return "Access Denied: Insufficient Permissions."
+			# Retrieves retention period from settings
+			MonthsToKeep = self.__AM.GetRetentionMonths()
 			# Generates current date for calculation
 			Now = datetime.now()
 			Year = Now.year
@@ -424,7 +425,6 @@ class LibraryManager:
 			# While not day-accurate, this avoids a "February 31st" issue
 			Day = 1
 			# Subtracts months from current date to find cut off date
-			MonthsToKeep = 6
 			for m in range(int(MonthsToKeep)):
 				Month -= 1
 				# Year rollover
@@ -433,34 +433,29 @@ class LibraryManager:
 					Year -= 1
 			# Formats Date to ISO 8601
 			CutOffDate = int(f"{Year}{Month:02d}{Day:02d}")
+			# Deletes all returned loans older than the cut off date in one operation
 			self.__Curs.execute("""
-					SELECT ULoanID 
-					FROM Loans 
-					WHERE ReturnDate < ?
-					AND ReturnDate IS NOT NULL
+					DELETE FROM Loans
+					WHERE ReturnDate IS NOT NULL AND ReturnDate < ?
 				""",(CutOffDate,))
-			OldLoans = self.__Curs.fetchall()
-			for Loan in OldLoans:
-				ULoanID = Loan[0]
-				self.__Curs.execute("""
-						DELETE FROM Loans 
-						WHERE ULoanID = ?
-					""",(ULoanID,))
-				self.__AM.Log(f"{self.__AM.GetCurrentUser()} cleared old loan {ULoanID}")
+			LoansDeleted = self.__Curs.rowcount
 			self.__Conn.commit()
-			return f"Cleared {len(OldLoans)} old loans."
+			self.__AM.Log(f"{self.__AM.GetCurrentUser()} cleared {LoansDeleted} old loans with return date before {CutOffDate}")
+			return f"Cleared {LoansDeleted} old loans."
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to clear old loans and encountered an error: {e}")
 			return f"System error: {e}"
 
 
 # --- Issuing and deleting reservations ---
-# check this carefully, may not work
 	def ClearOldReservations(self):
 		try:
 			# Permission check
 			if self.__AM.CheckPermission("Admin") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to clear old reservations: Insufficient permissions")
 				return "Access Denied: Insufficient Permissions."
+			# Retrieves retention period from settings
+			MonthsToKeep = self.__AM.GetRetentionMonths()
 			# Generates current date for calculation
 			Now = datetime.now()
 			Year = Now.year
@@ -468,7 +463,6 @@ class LibraryManager:
 			# While not day-accurate, this avoids a "February 31st" issue
 			Day = 1
 			# Subtracts months from current date to find cut off date
-			MonthsToKeep = 6
 			for m in range(int(MonthsToKeep)):
 				Month -= 1
 				# Year rollover
@@ -477,21 +471,15 @@ class LibraryManager:
 					Year -= 1
 			# Formats Date to ISO 8601
 			CutOffDate = int(f"{Year}{Month:02d}{Day:02d}")
+			# Deletes all reservations older than the cut off date in one operation
 			self.__Curs.execute("""
-					SELECT URID 
-					FROM Reservations 
+					DELETE FROM Reservations
 					WHERE ReservationDate < ?
 				""",(CutOffDate,))
-			OldReservations = self.__Curs.fetchall()
-			for Reservation in OldReservations:
-				URID = Reservation[0]
-				self.__Curs.execute("""
-						DELETE FROM Reservations 
-						WHERE URID = ?
-					""",(URID,))
-				self.__AM.Log(f"{self.__AM.GetCurrentUser()} cleared old reservation {URID}")
+			ReservationsDeleted = self.__Curs.rowcount
 			self.__Conn.commit()
-			return f"Cleared {len(OldReservations)} old reservations."
+			self.__AM.Log(f"{self.__AM.GetCurrentUser()} cleared {ReservationsDeleted} old reservations with date before {CutOffDate}")
+			return f"Cleared {ReservationsDeleted} old reservations."
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to clear old reservations and encountered an error: {e}")
 			return f"System error: {e}"
@@ -602,6 +590,154 @@ class LibraryManager:
 			return Results if Results else f"Could not find a loan matching '{SearchTerm}'."
 		except Exception as e:
 			return f"Search Error: {e}"
+
+# --- Notification Methods ---
+	def CreateReservationNotification(self, URID):
+		try:
+			# Permission check
+			if self.__AM.CheckPermission("Teacher") != True:
+				return "Access Denied: Insufficient Permissions."
+			# Retrieves reservation details to find the staff member and book title
+			self.__Curs.execute("""
+				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID
+				FROM Reservations
+				JOIN Books ON Reservations.ISBN = Books.ISBN
+				WHERE Reservations.URID = ?
+			""", (URID,))
+			Reservation = self.__Curs.fetchone()
+			if not Reservation:
+				return "Reservation not found."
+			Title = Reservation[1]
+			ReservationDate = Reservation[2]
+			Quantity = Reservation[3]
+			UStaID = Reservation[4]
+			# Finds which copies to collect and from where
+			PickList = self.__FindReservationStock(URID)
+			if isinstance(PickList, str):
+				# FindReservationStock returned an error or insufficient stock message
+				return PickList
+			if PickList is None:
+				return "Error finding reservation stock."
+			# Builds the email body from the picklist
+			# Each entry in PickList is [UCID1, UCID2, ..., RoomName]
+			Body = f"Reservation #{URID} - {Title}\n"
+			Body += f"Date: {ReservationDate}, Quantity: {Quantity}\n\n"
+			Body += "Copies to collect:\n"
+			for Entry in PickList:
+				RoomName = Entry[-1]
+				CopyIDs = Entry[:-1]
+				Body += f"  Room {RoomName}: copies {', '.join(str(c) for c in CopyIDs)}\n"
+			# Creates the notification in SystemConfig via AccountManager
+			return self.__AM.CreateNotification(UStaID, Body)
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} encountered an error creating reservation notification for {URID}: {e}")
+			return f"System error: {e}"
+
+# --- Overdue Methods ---
+	def GetOverdueLoans(self):
+		try:
+			# Permission check
+			if self.__AM.CheckPermission("Teacher") != True:
+				return "Access Denied: Insufficient Permissions."
+			Today = int(datetime.now().strftime("%Y%m%d"))
+			# Retrieves all active loans past their due date, including student contact details
+			self.__Curs.execute("""
+				SELECT Loans.ULoanID, Books.Title, Loans.DueDate, Loans.UStuID, Students.Forename, Students.Surname, Students.Email
+				FROM Loans
+				JOIN Copies ON Loans.UCID = Copies.UCID
+				JOIN Books ON Copies.ISBN = Books.ISBN
+				JOIN Students ON Loans.UStuID = Students.UStuID
+				WHERE Loans.ReturnDate IS NULL AND Loans.DueDate < ?
+			""", (Today,))
+			Results = self.__Curs.fetchall()
+			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved {len(Results)} overdue loans")
+			return Results if Results else "No overdue loans found."
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve overdue loans and encountered an error: {e}")
+			return f"System error: {e}"
+
+	def GetLoansDueTomorrow(self):
+		try:
+			# Permission check
+			if self.__AM.CheckPermission("Teacher") != True:
+				return "Access Denied: Insufficient Permissions."
+			# timedelta handles all date edge cases including year boundaries and leap years
+			Tomorrow = int((datetime.now() + timedelta(days=1)).strftime("%Y%m%d"))
+			# Retrieves all active loans due tomorrow, including student contact details
+			self.__Curs.execute("""
+				SELECT Loans.ULoanID, Books.Title, Loans.DueDate, Loans.UStuID, Students.Forename, Students.Surname, Students.Email
+				FROM Loans
+				JOIN Copies ON Loans.UCID = Copies.UCID
+				JOIN Books ON Copies.ISBN = Books.ISBN
+				JOIN Students ON Loans.UStuID = Students.UStuID
+				WHERE Loans.ReturnDate IS NULL AND Loans.DueDate = ?
+			""", (Tomorrow,))
+			Results = self.__Curs.fetchall()
+			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved {len(Results)} loans due tomorrow")
+			return Results if Results else "No loans due tomorrow."
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve loans due tomorrow and encountered an error: {e}")
+			return f"System error: {e}"
+
+	def SendOverdueNotifications(self):
+		try:
+			# Permission check
+			if self.__AM.CheckPermission("Teacher") != True:
+				return "Access Denied: Insufficient Permissions."
+			OverdueLoans = self.GetOverdueLoans()
+			if isinstance(OverdueLoans, str):
+				# Either no results or an error
+				return OverdueLoans
+			Sent = 0
+			for Loan in OverdueLoans:
+				ULoanID, Title, DueDate, UStuID, Forename, Surname, Email = Loan
+				if not Email:
+					self.__AM.Log(f"Overdue notification skipped for student {UStuID}: no email address on record")
+					continue
+				Subject = "Overdue Library Book"
+				Body = f"Dear {Forename} {Surname},\n\nThe following book is overdue:\n"
+				Body += f"  Title: {Title}\n  Loan ID: {ULoanID}\n  Due date: {DueDate}\n\n"
+				Body += "Please return it to the library as soon as possible."
+				Result = self.__AM.SendEmail(Email, Subject, Body)
+				if Result == True:
+					Sent += 1
+				else:
+					self.__AM.Log(f"Failed to send overdue notification to student {UStuID}")
+			self.__AM.Log(f"{self.__AM.GetCurrentUser()} sent {Sent} overdue notifications")
+			return f"Sent {Sent} overdue notifications."
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} encountered an error sending overdue notifications: {e}")
+			return f"System error: {e}"
+
+	def SendDueTomorrowNotifications(self):
+		try:
+			# Permission check
+			if self.__AM.CheckPermission("Teacher") != True:
+				return "Access Denied: Insufficient Permissions."
+			DueTomorrow = self.GetLoansDueTomorrow()
+			if isinstance(DueTomorrow, str):
+				# Either no results or an error
+				return DueTomorrow
+			Sent = 0
+			for Loan in DueTomorrow:
+				ULoanID, Title, DueDate, UStuID, Forename, Surname, Email = Loan
+				if not Email:
+					self.__AM.Log(f"Due tomorrow notification skipped for student {UStuID}: no email address on record")
+					continue
+				Subject = "Library Book Due Tomorrow"
+				Body = f"Dear {Forename} {Surname},\n\nThe following book is due back tomorrow:\n"
+				Body += f"  Title: {Title}\n  Loan ID: {ULoanID}\n  Due date: {DueDate}\n\n"
+				Body += "Please remember to return it to the library."
+				Result = self.__AM.SendEmail(Email, Subject, Body)
+				if Result == True:
+					Sent += 1
+				else:
+					self.__AM.Log(f"Failed to send due tomorrow notification to student {UStuID}")
+			self.__AM.Log(f"{self.__AM.GetCurrentUser()} sent {Sent} due tomorrow notifications")
+			return f"Sent {Sent} due tomorrow notifications."
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} encountered an error sending due tomorrow notifications: {e}")
+			return f"System error: {e}"
 
 # --- Internal helper methods ---
 	def __MergeSort(self, UnsortedList):
@@ -865,11 +1001,15 @@ class LibraryManager:
 
 	def GetLoanDetails(self, ULoanID):
 		try:
+			# Permission check
+			if self.__AM.CheckPermission("Teacher") != True:
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate, Loans.UStuID, Loans.UStaID, Copies.UCID
+				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate, Loans.UStuID, Loans.UStaID, Copies.UCID, Students.Forename, Students.Surname
 				FROM Loans
 				JOIN Copies ON Loans.UCID = Copies.UCID
 				JOIN Books ON Copies.ISBN = Books.ISBN
+				JOIN Students ON Loans.UStuID = Students.UStuID
 				WHERE Loans.ULoanID = ?
 			""", (ULoanID,))
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved details for loan {ULoanID}")
@@ -975,10 +1115,11 @@ class LibraryManager:
 	def GetAllLoans(self):
 		try:
 			self.__Curs.execute("""
-				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate, Loans.UStuID, Loans.UStaID, Copies.UCID
+				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate, Loans.UStuID, Loans.UStaID, Copies.UCID, Students.Forename, Students.Surname
 				FROM Loans
 				JOIN Copies ON Loans.UCID = Copies.UCID
 				JOIN Books ON Copies.ISBN = Books.ISBN
+				JOIN Students ON Loans.UStuID = Students.UStuID
 			""")
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all loans")
 			return self.__Curs.fetchall()
@@ -989,10 +1130,11 @@ class LibraryManager:
 	def GetAllActiveLoans(self):
 		try:
 			self.__Curs.execute("""
-				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.UStuID, Loans.UStaID, Copies.UCID
+				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.UStuID, Loans.UStaID, Copies.UCID, Students.Forename, Students.Surname
 				FROM Loans
 				JOIN Copies ON Loans.UCID = Copies.UCID
 				JOIN Books ON Copies.ISBN = Books.ISBN
+				JOIN Students ON Loans.UStuID = Students.UStuID
 				WHERE Loans.ReturnDate IS NULL
 			""")
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all active loans")
@@ -1004,10 +1146,11 @@ class LibraryManager:
 	def GetAllLoansByStudent(self, UStuID):
 		try:
 			self.__Curs.execute("""
-				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate, Loans.UStaID, Copies.UCID
+				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate, Loans.UStaID, Copies.UCID, Students.Forename, Students.Surname
 				FROM Loans
 				JOIN Copies ON Loans.UCID = Copies.UCID
 				JOIN Books ON Copies.ISBN = Books.ISBN
+				JOIN Students ON Loans.UStuID = Students.UStuID
 				WHERE Loans.UStuID = ?
 			""", (UStuID,))
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all loans for student {UStuID}")
@@ -1068,5 +1211,4 @@ class LibraryManager:
 			return self.__Curs.fetchall()
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve a list of reservations for today and encountered an error: {e}")
-			return f"System error: {e}"	
-
+			return f"System error: {e}"
