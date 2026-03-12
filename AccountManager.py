@@ -10,6 +10,9 @@ import uuid
 import hashlib
 # Used for automatic date generation when setting accounts to inactive
 from datetime import datetime
+# Used for sending email notifications
+import smtplib
+from email.mime.text import MIMEText
 
 class AccountManager:
 
@@ -38,7 +41,7 @@ class AccountManager:
 			pass
 
 # --- Adding / Removing accounts ---
-	def AddStaff(self, Password, Forename, Surname, AccessLevel):
+	def AddStaff(self, Password, Forename, Surname, AccessLevel, Email):
 		try:
 			# Permission check
 			if self.CheckPermission("SysAdmin") != True:
@@ -51,8 +54,8 @@ class AccountManager:
 			ID = self.GetNextID(self.__SysCurs, "Staff", "UStaID")
 			# Inserts Data
 			self.__SysCurs.execute(
-				"INSERT INTO Staff (UStaID, PasswordHash, Salt, Forename, Surname, AccessLevel)  VALUES (?, ?, ?, ?, ?, ?)",
-				(ID, PasswordHash, Salt, Forename, Surname, AccessLevel)
+				"INSERT INTO Staff (UStaID, PasswordHash, Salt, Forename, Surname, AccessLevel, Email)  VALUES (?, ?, ?, ?, ?, ?, ?)",
+				(ID, PasswordHash, Salt, Forename, Surname, AccessLevel, Email)
 			)
 			# Commits, Logs, returns confirmation
 			self.__SysConn.commit()
@@ -91,7 +94,7 @@ class AccountManager:
 			self.Log(f"User {self.__CurrentUser} attempted to remove staff and encountered an error: {e}")
 			return f"System error: {e}"
 
-	def AddStudent(self, Forename, Surname, EntryYear):
+	def AddStudent(self, Forename, Surname, EntryYear, Email):
 		try:
 			# Permission check
 			if self.CheckPermission("Admin") != True:
@@ -107,8 +110,8 @@ class AccountManager:
 			ID = self.GetNextID(self.__LibCurs, "Students", "UStuID")
 			# Inserts new data
 			self.__LibCurs.execute(
-				"INSERT INTO Students (UStuID, Forename, Surname, MaxActiveLoans, EntryYear)  VALUES (?, ?, ?, ?, ?)",
-				(ID, Forename, Surname, MaxLoans, EntryYear)
+				"INSERT INTO Students (UStuID, Forename, Surname, MaxActiveLoans, EntryYear, Email)  VALUES (?, ?, ?, ?, ?, ?)",
+				(ID, Forename, Surname, MaxLoans, EntryYear, Email)
 			)
 			# Commits, Logs, Returns confirmation
 			self.Log(f"User {self.__CurrentUser} added student {ID}")
@@ -155,12 +158,13 @@ class AccountManager:
 				for Line in File:
 					# Splits the data by commas, then inputs each student line by line
 					Data = Line.strip().split(",")
-					if len(Data) == 3:
+					if len(Data) == 4:
 						try:
 							Forename = Data[0]
 							Surname = Data[1]
 							EntryYear = int(Data[2])
-							self.AddStudent(Forename, Surname, EntryYear)
+							Email = Data[3]
+							self.AddStudent(Forename, Surname, EntryYear, Email)
 							Count += 1
 						# Error handling: ValueError (i.e entry year is inputted as "Two Thousand and Twenty Five" instead of 2025)
 						except ValueError:
@@ -178,12 +182,14 @@ class AccountManager:
 		except Exception as e:
 			return f"An error occurred during import: {e}"
 
-	def PurgeOldAccounts(self, MonthsToKeep):
+	def PurgeOldAccounts(self):
 		# Permission check
 		if self.CheckPermission("Admin") != True:
 			self.Log(f"{self.__CurrentUser} attempted to purge old accounts: Insufficient permissions")
 			return "Access Denied: Insufficient Permissions."
 		try:
+			# Retrieves retention period from settings
+			MonthsToKeep = self.GetRetentionMonths()
 			# Generates current date for calculation
 			Now = datetime.now()
 			Year = Now.year
@@ -494,7 +500,7 @@ class AccountManager:
 				self.Log(f"{self.__CurrentUser} attempted to view all staff details: Insufficient permissions")
 				return "Access Denied: Insufficient Permissions."
 			# Selects all staff details
-			self.__SysCurs.execute("SELECT UStaID, Forename, Surname, AccessLevel, AccountActive FROM Staff")
+			self.__SysCurs.execute("SELECT UStaID, Forename, Surname, AccessLevel, AccountActive, Email FROM Staff")
 			# Logs retrieval and returns all staff details as a list of tuples
 			self.Log(f"User {self.__CurrentUser} retrieved all staff details")
 			return self.__SysCurs.fetchall()
@@ -509,7 +515,7 @@ class AccountManager:
 				self.Log(f"{self.__CurrentUser} attempted to view all student details: Insufficient permissions")
 				return "Access Denied: Insufficient Permissions."
 			# Selects all staff details
-			self.__LibCurs.execute("SELECT UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear FROM Students")
+			self.__LibCurs.execute("SELECT UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear, Email FROM Students")
 			# Logs retrieval and returns all staff details as a list of tuples
 			self.Log(f"User {self.__CurrentUser} retrieved all student details")
 			return self.__LibCurs.fetchall()
@@ -521,7 +527,7 @@ class AccountManager:
 	def GetStaffDetails(self, ID):
 		try:
 			# Permission check
-			if self.__CurrentUser != str(ID) and self.CheckPermission("Admin") != True:
+			if self.__CurrentUser != int(ID) and self.CheckPermission("Admin") != True:
 				self.Log(f"{self.__CurrentUser} attempted to view unauthorised staff details: Insufficient permissions")
 				return "Access Denied: Insufficient permission to view others' details, you can only view your own"
 			# Typo check
@@ -530,7 +536,7 @@ class AccountManager:
 				return "Error: ID does not exist"
 			# Retrieves details of 1 staff member - specified with ID
 			self.__SysCurs.execute(
-				"SELECT UStaID, Forename, Surname, AccessLevel, AccountActive FROM Staff WHERE UStaID = ?", 
+				"SELECT UStaID, Forename, Surname, AccessLevel, AccountActive, Email FROM Staff WHERE UStaID = ?", 
 				(ID,)
 				)
 			# Logs and returns details as a tuple
@@ -553,7 +559,7 @@ class AccountManager:
 				return "Error: ID does not exist"
 			# Retrieves details of 1 student - specified with ID
 			self.__LibCurs.execute(
-				"SELECT UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear FROM Students WHERE UStuID = ?", 
+				"SELECT UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear, Email FROM Students WHERE UStuID = ?", 
 				(ID,)
 				)
 			# Logs and returns details as a tuple
@@ -581,6 +587,54 @@ class AccountManager:
 			self.Log(f"Error retrieving loan period: {e}")
 			# Otherwise, returns a reasonable loan period
 			return 14
+
+		def GetRetentionMonths(self):
+			try:
+				# Finds and returns the default data retention period in months
+				self.__SysCurs.execute(
+					"SELECT SettingValue FROM Settings WHERE SettingName = 'DefaultRetentionMonths'",
+				)
+				return int(self.__SysCurs.fetchone()[0])
+			except Exception as e:
+				self.Log(f"Error retrieving retention months: {e}")
+				# Otherwise, returns a reasonable retention period
+				return 6
+
+		def GetSMTPSettings(self):
+			try:
+				# Retrieves all SMTP settings as a dictionary
+				self.__SysCurs.execute(
+					"SELECT SettingName, SettingValue FROM Settings WHERE SettingName IN ('SMTPHost', 'SMTPPort', 'SMTPUser', 'SMTPPassword', 'SMTPSender')"
+				)
+				return {row[0]: row[1] for row in self.__SysCurs.fetchall()}
+			except Exception as e:
+				self.Log(f"Error retrieving SMTP settings: {e}")
+				return {}
+
+		def SendEmail(self, ToAddress, Subject, Body):
+			try:
+				# Retrieves SMTP settings
+				SMTPSettings = self.GetSMTPSettings()
+				# Checks that all required settings are present and filled in
+				Required = ["SMTPHost", "SMTPPort", "SMTPUser", "SMTPPassword", "SMTPSender"]
+				if not all(SMTPSettings.get(k) for k in Required):
+					self.Log("Email send failed: SMTP settings incomplete")
+					return "Error: SMTP settings incomplete"
+				# Builds the email
+				Message = MIMEText(Body)
+				Message["Subject"] = Subject
+				Message["From"] = SMTPSettings["SMTPSender"]
+				Message["To"] = ToAddress
+				# Connects to SMTP server and sends
+				with smtplib.SMTP(SMTPSettings["SMTPHost"], int(SMTPSettings["SMTPPort"])) as Server:
+					Server.starttls()
+					Server.login(SMTPSettings["SMTPUser"], SMTPSettings["SMTPPassword"])
+					Server.sendmail(SMTPSettings["SMTPSender"], ToAddress, Message.as_string())
+				self.Log(f"Email sent to {ToAddress}: {Subject}")
+				return True
+			except Exception as e:
+				self.Log(f"Email send failed to {ToAddress}: {e}")
+				return f"System error: {e}"
 
 # --- Checking methods ---
 	def CheckPermission(self, NecessaryPerms):
@@ -665,4 +719,3 @@ class AccountManager:
 			return Results if Results else f"Could not find a student matching '{SearchTerm}'."
 		except Exception as e:
 			return f"Search Error: {e}"
-		

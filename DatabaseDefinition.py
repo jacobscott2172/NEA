@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS Students(
               MaxActiveLoans INTEGER NOT NULL, 
               AccountActive BOOLEAN NOT NULL DEFAULT TRUE,
               InactiveDate INTEGER,
-              EntryYear INTEGER NOT NULL
+              EntryYear INTEGER NOT NULL,
+              Email TEXT
               )''')
 
 # Creates the "Authors" table, including a unique ID
@@ -97,7 +98,8 @@ CREATE TABLE IF NOT EXISTS Staff(
               Surname TEXT NOT NULL,
               AccessLevel TEXT NOT NULL,
               AccountActive BOOLEAN NOT NULL DEFAULT TRUE,
-              InactiveDate INTEGER
+              InactiveDate INTEGER,
+              Email TEXT
               )''')
 
 conn2.commit()
@@ -160,6 +162,36 @@ curs2.execute('''
 curs2.execute('''
               INSERT OR IGNORE INTO Settings (SettingName, SettingValue)
               VALUES ('DefaultLoanPeriod', '14')
+              ''')
+
+curs2.execute('''
+              INSERT OR IGNORE INTO Settings (SettingName, SettingValue)
+              VALUES ('DefaultRetentionMonths', '6')
+              ''')
+
+curs2.execute('''
+              INSERT OR IGNORE INTO Settings (SettingName, SettingValue)
+              VALUES ('SMTPHost', '')
+              ''')
+
+curs2.execute('''
+              INSERT OR IGNORE INTO Settings (SettingName, SettingValue)
+              VALUES ('SMTPPort', '')
+              ''')
+
+curs2.execute('''
+              INSERT OR IGNORE INTO Settings (SettingName, SettingValue)
+              VALUES ('SMTPUser', '')
+              ''')
+
+curs2.execute('''
+              INSERT OR IGNORE INTO Settings (SettingName, SettingValue)
+              VALUES ('SMTPPassword', '')
+              ''')
+
+curs2.execute('''
+              INSERT OR IGNORE INTO Settings (SettingName, SettingValue)
+              VALUES ('SMTPSender', '')
               ''')
 
 conn2.commit()
