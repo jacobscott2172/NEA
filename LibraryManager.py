@@ -21,7 +21,7 @@ class LibraryManager:
 		except AttributeError:
 			pass
 
-# --- Adding / Removing data ---
+# --- Adding / Removing Authors ---
 	def AddAuthor(self, Forename, Middlename, Surname):
 		try:
 			# Permission check
@@ -81,6 +81,7 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to remove an author and encountered an error: {e}")
 			return f"System error: {e}"
 
+# --- Adding / Removing Books and linking authors ---
 	def AddBook(self, ISBN, Title, Genre, Subject):
 		try:
 			# Permission check
@@ -193,6 +194,7 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to unlink authors and encountered an error: {e}")
 			return f"System error: {e}"
 
+# --- Adding / Removing Locations ---
 	def AddLocation(self, ClassCode):
 		try:
 			#Permission check
@@ -236,6 +238,7 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to remove a location and encountered an error: {e}")
 			return f"System error: {e}"
 
+# --- Adding / Removing / MovingCopies ---
 	def AddCopy(self, ISBN, ULocID):
 		try:
 			# Permission check
@@ -331,7 +334,7 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to remove a copy and encountered an error: {e}")
 			return f"System error: {e}"
 
-# --- Loans & Reservations ---
+# --- Issuing, returning, and deleting loans ---
 	def IssueLoan(self, UCID, UStuID):
 		try:
 			# Permission check
@@ -349,7 +352,7 @@ class LibraryManager:
 			# Get dates
 			LoanDate = int(datetime.now().strftime("%Y%m%d"))
 			DueDate = int((datetime.now() + timedelta(days = self.__AM.GetLoanPeriod())).strftime("%Y%m%d"))
-			if not self.LoanStockConflictCheck(UCID, LoanDate, DueDate):
+			if not self.__LoanStockConflictCheck(UCID, LoanDate, DueDate):
 				return "Loan cannot be issued due to stock conflicts with existing reservations or loans."
 			# Issue loan
 			ULoanID = self.__AM.GetNextID(self.__Curs, "Loans", "ULoanID")
@@ -406,7 +409,92 @@ class LibraryManager:
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to return a loan and encountered an error: {e}")
 			return f"System error: {e}"
-		
+
+# check this carefully, may not work
+	def ClearOldLoans(self):
+		try:
+			# Permission check
+			if self.__AM.CheckPermission("Admin") != True:
+				return "Access Denied: Insufficient Permissions."
+			# Generates current date for calculation
+			Now = datetime.now()
+			Year = Now.year
+			Month = Now.month
+			# While not day-accurate, this avoids a "February 31st" issue
+			Day = 1
+			# Subtracts months from current date to find cut off date
+			MonthsToKeep = 6
+			for m in range(int(MonthsToKeep)):
+				Month -= 1
+				# Year rollover
+				if Month == 0:
+					Month = 12
+					Year -= 1
+			# Formats Date to ISO 8601
+			CutOffDate = int(f"{Year}{Month:02d}{Day:02d}")
+			self.__Curs.execute("""
+					SELECT ULoanID 
+					FROM Loans 
+					WHERE ReturnDate < ?
+					AND ReturnDate IS NOT NULL
+				""",(CutOffDate,))
+			OldLoans = self.__Curs.fetchall()
+			for Loan in OldLoans:
+				ULoanID = Loan[0]
+				self.__Curs.execute("""
+						DELETE FROM Loans 
+						WHERE ULoanID = ?
+					""",(ULoanID,))
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} cleared old loan {ULoanID}")
+			self.__Conn.commit()
+			return f"Cleared {len(OldLoans)} old loans."
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to clear old loans and encountered an error: {e}")
+			return f"System error: {e}"
+
+
+# --- Issuing and deleting reservations ---
+# check this carefully, may not work
+	def ClearOldReservations(self):
+		try:
+			# Permission check
+			if self.__AM.CheckPermission("Admin") != True:
+				return "Access Denied: Insufficient Permissions."
+			# Generates current date for calculation
+			Now = datetime.now()
+			Year = Now.year
+			Month = Now.month
+			# While not day-accurate, this avoids a "February 31st" issue
+			Day = 1
+			# Subtracts months from current date to find cut off date
+			MonthsToKeep = 6
+			for m in range(int(MonthsToKeep)):
+				Month -= 1
+				# Year rollover
+				if Month == 0:
+					Month = 12
+					Year -= 1
+			# Formats Date to ISO 8601
+			CutOffDate = int(f"{Year}{Month:02d}{Day:02d}")
+			self.__Curs.execute("""
+					SELECT URID 
+					FROM Reservations 
+					WHERE ReservationDate < ?
+				""",(CutOffDate,))
+			OldReservations = self.__Curs.fetchall()
+			for Reservation in OldReservations:
+				URID = Reservation[0]
+				self.__Curs.execute("""
+						DELETE FROM Reservations 
+						WHERE URID = ?
+					""",(URID,))
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} cleared old reservation {URID}")
+			self.__Conn.commit()
+			return f"Cleared {len(OldReservations)} old reservations."
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to clear old reservations and encountered an error: {e}")
+			return f"System error: {e}"
+ 
 	def IssueReservation(self, ULocID, ReservationDate, ISBN, UStaID, Quantity):
 		try:
 			# Permission check
@@ -426,8 +514,205 @@ class LibraryManager:
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to issue a reservation and encountered an error: {e}")
 			return f"System error: {e}"
+			
+# --- Search Methods ---
+	def SearchBooks(self, SearchTerm):
+		try:
+			Term = f"%{SearchTerm}%"
+			self.__Curs.execute( """
+				SELECT Books.ISBN, Books.Title, Authors.Surname, Books.Genre, Books.Subject
+				FROM Books
+				JOIN BooksAuthors ON Books.ISBN = BooksAuthors.ISBN
+				JOIN Authors ON BooksAuthors.UAID = Authors.UAID
+				WHERE Books.Title LIKE ? OR Authors.Surname LIKE ? OR Books.ISBN LIKE ? OR Books.Genre LIKE ? OR Books.Subject LIKE ?
+			""", (Term, Term, Term, Term, Term))
+			Results = self.__Curs.fetchall()
+			return Results if Results else f"Could not find any books matching '{SearchTerm}'."
+		except Exception as e:
+			return f"Search Error: {e}"
+		
+	def SearchReservations(self, SearchTerm):
+		try:
+			Term = f"%{SearchTerm}%"
+			self.__Curs.execute("""
+				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity
+				FROM Reservations
+				JOIN Books ON Reservations.ISBN = Books.ISBN
+				WHERE Books.Title LIKE ? OR CAST(Reservations.URID AS TEXT) LIKE ?
+			""", (Term, Term))
+			Results = self.__Curs.fetchall()
+			return Results if Results else f"Could not find any reservations matching '{SearchTerm}'."
+		except Exception as e:
+			return f"Search Error: {e}"
+		
+	def SearchCopies(self, SearchTerm):
+		try:
+			Term = f"%{SearchTerm}%"
+			self.__Curs.execute("""
+				SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, Locations.ClassCode
+				FROM Copies
+				JOIN Books ON Copies.ISBN = Books.ISBN
+				JOIN Locations ON Copies.CurrentLocationID = Locations.ULocID
+				WHERE CAST(Copies.UCID AS TEXT) LIKE ? OR Books.Title LIKE ? OR Books.ISBN LIKE ? OR Locations.ClassCode LIKE ?
+			""", (Term, Term, Term, Term))
+			Results = self.__Curs.fetchall()
+			return Results if Results else f"Could not find any book copies matching '{SearchTerm}'."
+		except Exception as e:
+			return f"Search Error: {e}" 
 
-	def LoanStockConflictCheck(self, UCID, LoanDate, DueDate):
+	def SearchLocations(self, SearchTerm):
+		try:
+			Term = f"%{SearchTerm}%"
+			self.__Curs.execute("""
+				SELECT ULocID, ClassCode 
+				FROM Locations 
+				WHERE ClassCode LIKE ?
+			""", (Term,))
+			Results = self.__Curs.fetchall()
+			return Results if Results else f"Could not find a location matching '{SearchTerm}'."
+		except Exception as e:
+			return f"Search Error: {e}"
+		
+	def SearchAuthors(self, SearchTerm):
+		try:
+			Term = f"%{SearchTerm}%"
+			self.__Curs.execute("""
+				SELECT UAID, Forename, Middlenames, Surname
+				FROM Authors
+				WHERE Forename LIKE ? OR Middlenames LIKE ? OR Surname LIKE ?
+			""", (Term, Term, Term))
+			Results = self.__Curs.fetchall()
+			return Results if Results else f"Could not find an author matching '{SearchTerm}'."
+		except Exception as e:
+			return f"Search Error: {e}"
+		
+	def SearchLoans(self, SearchTerm):
+		try:
+			Term = f"%{SearchTerm}%"
+			self.__Curs.execute("""
+				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate, Loans.UStuID, Loans.UStaID, Copies.UCID, Students.Forename, Students.Surname
+				FROM Loans
+				JOIN Copies ON Loans.UCID = Copies.UCID
+				JOIN Books ON Copies.ISBN = Books.ISBN
+				JOIN Students ON Loans.UStuID = Students.UStuID
+				WHERE CAST(Loans.ULoanID AS TEXT) LIKE ? OR Books.Title LIKE ? OR Students.Forename LIKE ? OR Students.Surname LIKE ? OR CAST(Loans.UStuID AS TEXT) LIKE ? OR CAST(Loans.UStaID AS TEXT) LIKE ? OR CAST(Copies.UCID AS TEXT) LIKE ?
+			""", (Term, Term, Term, Term, Term, Term, Term))
+			Results = self.__Curs.fetchall()
+			return Results if Results else f"Could not find a loan matching '{SearchTerm}'."
+		except Exception as e:
+			return f"Search Error: {e}"
+
+# --- Internal helper methods ---
+	def __MergeSort(self, UnsortedList):
+		if len(UnsortedList) <= 1:
+			return UnsortedList
+		MiddleIndex = len(UnsortedList) // 2
+		LeftHalf = self.__MergeSort(UnsortedList[:MiddleIndex])
+		RightHalf = self.__MergeSort(UnsortedList[MiddleIndex:])
+		return self.__Merge(LeftHalf, RightHalf)
+
+	def __Merge(self, LeftSide, RightSide):
+		MergedList = []
+		LeftPointer = 0
+		RightPointer = 0
+		while LeftPointer < len(LeftSide) and RightPointer < len(RightSide):
+			if LeftSide[LeftPointer][1] >= RightSide[RightPointer][1]:
+				MergedList.append(LeftSide[LeftPointer])
+				LeftPointer += 1
+			else:
+				MergedList.append(RightSide[RightPointer])
+				RightPointer += 1
+		MergedList.extend(LeftSide[LeftPointer:])
+		MergedList.extend(RightSide[RightPointer:])      
+		return MergedList
+
+	def __ValidateISBN(self, ISBN):
+			ISBN = str(ISBN)
+			if len(ISBN) != 13:
+				return (False, "Invalid length ISBN. Only 13 digit format accepted")
+			ISBN12 = ISBN[:12]
+			OldCheckDigit = ISBN[-1]
+			Total = 0
+			for i, Digit in enumerate(ISBN12):
+				# Alternating weights: 1, 3, 1, 3...
+				weight = 1 if i % 2 == 0 else 3
+				Total += int(Digit) * weight
+			# Find if the user inputted ISBN matches the calculated check digit
+			CheckDigit = (10 - (Total % 10)) % 10
+			if CheckDigit != int(OldCheckDigit):
+				return (False, "Invalid check digit. Check you inputted the ISBN correctly")
+			else:
+				return (True, "Valid ISBN")
+
+	def __FindReservationStock(self, URID):
+		try:
+			self.__Curs.execute("""
+					SELECT ISBN, Quantity
+					FROM Reservations
+					WHERE URID = ?
+				""",(URID,))
+			Result = self.__Curs.fetchone()
+			if not Result:
+				return "Reservation not found."  
+			BookISBN = Result[0]
+			QuantityRemaining = Result[1]
+			self.__Curs.execute("""
+					SELECT UCID, CurrentLocationID 
+					FROM Copies 
+					WHERE ISBN = ? AND Status = 'Available' AND CurrentLocationID != ?
+				""",(BookISBN, self.__OnLoanLocation))
+			RawCopies = self.__Curs.fetchall()
+			LocationCounts = []
+			CopyIDsByLocation = {}
+			for Row in RawCopies:
+				RowUCID = Row[0]
+				ULocID = Row[1]
+				Found = False
+				for Entry in LocationCounts:
+					if Entry[0] == ULocID:
+						Entry[1] += 1
+						Found = True
+						break
+				if not Found:
+					LocationCounts.append([ULocID, 1])
+				if ULocID not in CopyIDsByLocation:
+					CopyIDsByLocation[ULocID] = []
+				CopyIDsByLocation[ULocID].append(RowUCID)
+			SortedLocations = self.__MergeSort(LocationCounts)
+			PickList = []
+			ReservedUCIDs = []
+			for RoomData in SortedLocations:
+				if QuantityRemaining <= 0:
+					break
+				RoomID = RoomData[0]
+				AvailableInRoom = RoomData[1]
+				self.__Curs.execute("""
+						SELECT ClassCode 
+						FROM Locations 
+						WHERE ULocID = ?
+					""", (RoomID,))
+				RoomNameResult = self.__Curs.fetchone()
+				RoomName = RoomNameResult[0] if RoomNameResult else f"Unknown Room ({RoomID})"
+				AmountToTake = min(AvailableInRoom, QuantityRemaining)
+				TakenUCIDs = CopyIDsByLocation[RoomID][:AmountToTake]
+				PickList.append(TakenUCIDs + [RoomName])
+				ReservedUCIDs.extend(TakenUCIDs)
+				QuantityRemaining -= AmountToTake
+			if QuantityRemaining > 0:
+				return f"Insufficient stock. Need {QuantityRemaining} more copies."
+			for ReservedUCID in ReservedUCIDs:
+				self.__Curs.execute("""
+						UPDATE Copies 
+						SET Status = 'Reserved' 
+						WHERE UCID = ?
+					""", (ReservedUCID,))
+			self.__Conn.commit()
+			return PickList
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} encountered an error in FindReservationStock: {e}")
+			return None
+
+	def __LoanStockConflictCheck(self, UCID, LoanDate, DueDate):
 		try:
 			self.__Curs.execute("""
 					SELECT ISBN FROM Copies WHERE UCID = ?
@@ -519,206 +804,6 @@ class LibraryManager:
 			self.__AM.Log(f"Conflict Check Error: {e}")
 			return f"System error: {e}"
 
-	def FindReservationStock(self, URID):
-		try:
-			self.__Curs.execute("""
-					SELECT ISBN, Quantity
-					FROM Reservations
-					WHERE URID = ?
-				""",(URID,))
-			Result = self.__Curs.fetchone()
-			if not Result:
-				return "Reservation not found."  
-			BookISBN = Result[0]
-			QuantityRemaining = Result[1]
-			self.__Curs.execute("""
-					SELECT UCID, CurrentLocationID 
-					FROM Copies 
-					WHERE ISBN = ? AND Status = 'Available' AND CurrentLocationID != ?
-				""",(BookISBN, self.__OnLoanLocation))
-			RawCopies = self.__Curs.fetchall()
-			LocationCounts = []
-			CopyIDsByLocation = {}
-			for Row in RawCopies:
-				RowUCID = Row[0]
-				ULocID = Row[1]
-				Found = False
-				for Entry in LocationCounts:
-					if Entry[0] == ULocID:
-						Entry[1] += 1
-						Found = True
-						break
-				if not Found:
-					LocationCounts.append([ULocID, 1])
-				if ULocID not in CopyIDsByLocation:
-					CopyIDsByLocation[ULocID] = []
-				CopyIDsByLocation[ULocID].append(RowUCID)
-			SortedLocations = self.__MergeSort(LocationCounts)
-			PickList = []
-			ReservedUCIDs = []
-			for RoomData in SortedLocations:
-				if QuantityRemaining <= 0:
-					break
-				RoomID = RoomData[0]
-				AvailableInRoom = RoomData[1]
-				self.__Curs.execute("""
-						SELECT ClassCode 
-						FROM Locations 
-						WHERE ULocID = ?
-					""", (RoomID,))
-				RoomNameResult = self.__Curs.fetchone()
-				RoomName = RoomNameResult[0] if RoomNameResult else f"Unknown Room ({RoomID})"
-				AmountToTake = min(AvailableInRoom, QuantityRemaining)
-				TakenUCIDs = CopyIDsByLocation[RoomID][:AmountToTake]
-				PickList.append(TakenUCIDs + [RoomName])
-				ReservedUCIDs.extend(TakenUCIDs)
-				QuantityRemaining -= AmountToTake
-			if QuantityRemaining > 0:
-				return f"Insufficient stock. Need {QuantityRemaining} more copies."
-			for ReservedUCID in ReservedUCIDs:
-				self.__Curs.execute("""
-						UPDATE Copies 
-						SET Status = 'Reserved' 
-						WHERE UCID = ?
-					""", (ReservedUCID,))
-			self.__Conn.commit()
-			return PickList
-		except Exception as e:
-			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} encountered an error in FindReservationStock: {e}")
-			return None
-			
-# --- Search Methods ---
-	def SearchBooks(self, SearchTerm):
-		try:
-			Term = f"%{SearchTerm}%"
-			self.__Curs.execute( """
-				SELECT Books.ISBN, Books.Title, Authors.Surname, Books.Genre, Books.Subject
-				FROM Books
-				JOIN BooksAuthors ON Books.ISBN = BooksAuthors.ISBN
-				JOIN Authors ON BooksAuthors.UAID = Authors.UAID
-				WHERE Books.Title LIKE ? OR Authors.Surname LIKE ? OR Books.ISBN LIKE ? OR Books.Genre LIKE ? OR Books.Subject LIKE ?
-			""", (Term, Term, Term, Term, Term))
-			Results = self.__Curs.fetchall()
-			return Results if Results else f"Could not find any books matching '{SearchTerm}'."
-		except Exception as e:
-			return f"Search Error: {e}"
-		
-	def SearchReservations(self, SearchTerm):
-		try:
-			Term = f"%{SearchTerm}%"
-			self.__Curs.execute("""
-				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity
-				FROM Reservations
-				JOIN Books ON Reservations.ISBN = Books.ISBN
-				WHERE Books.Title LIKE ? OR CAST(Reservations.URID AS TEXT) LIKE ?
-			""", (Term, Term))
-			Results = self.__Curs.fetchall()
-			return Results if Results else f"Could not find any reservations matching '{SearchTerm}'."
-		except Exception as e:
-			return f"Search Error: {e}"
-		
-	def SearchCopies(self, SearchTerm):
-		try:
-			Term = f"%{SearchTerm}%"
-			self.__Curs.execute("""
-				SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, Locations.ClassCode
-				FROM Copies
-				JOIN Books ON Copies.ISBN = Books.ISBN
-				JOIN Locations ON Copies.CurrentLocationID = Locations.ULocID
-				WHERE CAST(Copies.UCID AS TEXT) LIKE ? OR Books.Title LIKE ? OR Books.ISBN LIKE ? OR Locations.ClassCode LIKE ?
-			""", (Term, Term, Term, Term))
-			Results = self.__Curs.fetchall()
-			return Results if Results else f"Could not find any book copies matching '{SearchTerm}'."
-		except Exception as e:
-			return f"Search Error: {e}" 
-
-	def SearchLocations(self, SearchTerm):
-		try:
-			Term = f"%{SearchTerm}%"
-			self.__Curs.execute("""
-				SELECT ULocID, ClassCode 
-				FROM Locations 
-				WHERE ClassCode LIKE ?
-			""", (Term,))
-			Results = self.__Curs.fetchall()
-			return Results if Results else f"Could not find a location matching '{SearchTerm}'."
-		except Exception as e:
-			return f"Search Error: {e}"
-		
-	def SearchAuthors(self, SearchTerm):
-		try:
-			Term = f"%{SearchTerm}%"
-			self.__Curs.execute("""
-				SELECT UAID, Forename, Middlenames, Surname
-				FROM Authors
-				WHERE Forename LIKE ? OR Middlenames LIKE ? OR Surname LIKE ?
-			""", (Term, Term, Term))
-			Results = self.__Curs.fetchall()
-			return Results if Results else f"Could not find an author matching '{SearchTerm}'."
-		except Exception as e:
-			return f"Search Error: {e}"
-		
-# Add search by student name/ID
-	def SearchLoans(self, SearchTerm):
-		try:
-			Term = f"%{SearchTerm}%"
-			self.__Curs.execute("""
-				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate, Loans.UStuID, Loans.UStaID, Copies.UCID, Students.Forename, Students.Surname
-				FROM Loans
-				JOIN Copies ON Loans.UCID = Copies.UCID
-				JOIN Books ON Copies.ISBN = Books.ISBN
-				JOIN Students ON Loans.UStuID = Students.UStuID
-				WHERE CAST(Loans.ULoanID AS TEXT) LIKE ? OR Books.Title LIKE ? OR Students.Forename LIKE ? OR Students.Surname LIKE ? OR CAST(Loans.UStuID AS TEXT) LIKE ? OR CAST(Loans.UStaID AS TEXT) LIKE ? OR CAST(Copies.UCID AS TEXT) LIKE ?
-			""", (Term, Term, Term, Term, Term, Term, Term))
-			Results = self.__Curs.fetchall()
-			return Results if Results else f"Could not find a loan matching '{SearchTerm}'."
-		except Exception as e:
-			return f"Search Error: {e}"
-
-
-# --- Internal helper methods ---
-	def __MergeSort(self, UnsortedList):
-		if len(UnsortedList) <= 1:
-			return UnsortedList
-		MiddleIndex = len(UnsortedList) // 2
-		LeftHalf = self.__MergeSort(UnsortedList[:MiddleIndex])
-		RightHalf = self.__MergeSort(UnsortedList[MiddleIndex:])
-		return self.__Merge(LeftHalf, RightHalf)
-
-	def __Merge(self, LeftSide, RightSide):
-		MergedList = []
-		LeftPointer = 0
-		RightPointer = 0
-		while LeftPointer < len(LeftSide) and RightPointer < len(RightSide):
-			if LeftSide[LeftPointer][1] >= RightSide[RightPointer][1]:
-				MergedList.append(LeftSide[LeftPointer])
-				LeftPointer += 1
-			else:
-				MergedList.append(RightSide[RightPointer])
-				RightPointer += 1
-		MergedList.extend(LeftSide[LeftPointer:])
-		MergedList.extend(RightSide[RightPointer:])      
-		return MergedList
-
-	def __ValidateISBN(self, ISBN):
-			ISBN = str(ISBN)
-			if len(ISBN) != 13:
-				return (False, "Invalid length ISBN. Only 13 digit format accepted")
-			ISBN12 = ISBN[:12]
-			OldCheckDigit = ISBN[-1]
-			Total = 0
-			for i, Digit in enumerate(ISBN12):
-				# Alternating weights: 1, 3, 1, 3...
-				weight = 1 if i % 2 == 0 else 3
-				Total += int(Digit) * weight
-			# Find if the user inputted ISBN matches the calculated check digit
-			CheckDigit = (10 - (Total % 10)) % 10
-			if CheckDigit != int(OldCheckDigit):
-				return (False, "Invalid check digit. Check you inputted the ISBN correctly")
-			else:
-				return (True, "Valid ISBN")
-
-
 # --- Getter Methods --- 
 	def GetAuthorDetails(self, UAID):
 		try:
@@ -732,7 +817,6 @@ class LibraryManager:
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve details for author {UAID} and encountered an error: {e}")
 			return f"System error: {e}"
-
 
 	def GetBookDetails(self, ISBN):
 		try:
@@ -748,8 +832,7 @@ class LibraryManager:
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve details for book {ISBN} and encountered an error: {e}")
 			return f"System error: {e}"
-	
-		 
+	 
 	def GetAuthors(self, ISBN):
 		try:
 			self.__Curs.execute("""
@@ -763,7 +846,6 @@ class LibraryManager:
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve author details for book {ISBN} and encountered an error: {e}")
 			return f"System error: {e}"
-
 
 	def GetCopyDetails(self, UCID):
 		try:
@@ -780,7 +862,6 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve details for copy {UCID} and encountered an error: {e}")
 			return f"System error: {e}"
 
-
 	def GetLoanDetails(self, ULoanID):
 		try:
 			self.__Curs.execute("""
@@ -796,7 +877,6 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve details for loan {ULoanID} and encountered an error: {e}")
 			return f"System error: {e}"
 
-
 	def GetLocationDetails(self, ULocID):
 		try:
 			self.__Curs.execute("""
@@ -809,7 +889,6 @@ class LibraryManager:
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve details for location {ULocID} and encountered an error: {e}")
 			return f"System error: {e}"
-
 
 	def GetReservationDetails(self, URID):
 		try:
@@ -825,7 +904,6 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve details for reservation {URID} and encountered an error: {e}")
 			return f"System error: {e}"
 
-
 	def GetAllAuthors(self):
 		try:
 			self.__Curs.execute("""
@@ -838,7 +916,6 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve a list of all authors and encountered an error: {e}")
 			return f"System error: {e}"
 
-
 	def GetAllBooks(self):
 		try:
 			self.__Curs.execute("""
@@ -850,7 +927,6 @@ class LibraryManager:
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve a list of all books and encountered an error: {e}")
 			return f"System error: {e}"
-
 
 	def GetAllBooksAuthored(self, UAID):
 		try:
@@ -866,7 +942,6 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve books for author {UAID} and encountered an error: {e}")
 			return f"System error: {e}"
 
-
 	def GetAllCopies(self):
 		try:
 			self.__Curs.execute("""
@@ -880,7 +955,6 @@ class LibraryManager:
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve a list of all copies and encountered an error: {e}")
 			return f"System error: {e}"
-
 
 	def GetAllCopiesByISBN(self, ISBN):
 		try:
@@ -897,7 +971,6 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve a list of copies for book {ISBN} and encountered an error: {e}")
 			return f"System error: {e}"
 
-
 	def GetAllLoans(self):
 		try:
 			self.__Curs.execute("""
@@ -911,7 +984,6 @@ class LibraryManager:
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve a list of all loans and encountered an error: {e}")
 			return f"System error: {e}"
-
 
 	def GetAllActiveLoans(self):
 		try:
@@ -928,7 +1000,6 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve a list of active loans and encountered an error: {e}")
 			return f"System error: {e}"
 
-
 	def GetAllLoansByStudent(self, UStuID):
 		try:
 			self.__Curs.execute("""
@@ -944,7 +1015,6 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve a list of loans for student {UStuID} and encountered an error: {e}")
 			return f"System error: {e}"
 
-
 	def GetAllLocations(self):
 		try:
 			self.__Curs.execute("""
@@ -956,7 +1026,6 @@ class LibraryManager:
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve a list of all locations and encountered an error: {e}")
 			return f"System error: {e}"
-
 
 	def GetAllReservations(self):
 		try:
@@ -971,7 +1040,6 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve a list of all reservations and encountered an error: {e}")
 			return f"System error: {e}"
 
-
 	def GetAllReservationsByStaff(self, UStaID):
 		try:
 			self.__Curs.execute("""
@@ -985,7 +1053,6 @@ class LibraryManager:
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve a list of reservations for staff member {UStaID} and encountered an error: {e}")
 			return f"System error: {e}"
-
 
 	def GetAllReservationsToday(self):
 		try:
@@ -1003,5 +1070,5 @@ class LibraryManager:
 			return f"System error: {e}"	
 
  
- 
+# "AM" is not defined - error
 LM = LibraryManager(AM)

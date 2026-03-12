@@ -13,18 +13,22 @@ Example Teacher account:
 
 # TODO:
 # --- LibraryManager ---
-# first, check everything works and does as it says it does.
-# have Librarymanager inherit accountmanager (if possible)
+# first, check everything works and does as it says it does. - Done.
+# have Librarymanager inherit accountmanager (if possible) - NOT DONE
 # Update methods - Done?
 # delete methods - Done?
 # Getter methods - Done?
 # bulk copy input - Done?
-# reservation cleanup
-# loan cleanup
+# reservation cleanup - done?
+# loan cleanup - Done?
+- P.S maybe introduce a standard data retention time in systemconfig? for example 6 months. (to be used in purging old accounts, loans, etc)
+- This would need backfilling, and require another getter method in accountmanager. but improves standardisation
 # whetever is going on with the notification system (push email) incl. notifications 2 teachers for reservation stock
 # overdue methods incl. notifications 2 students for overdues (add student email to "Students" table)
+# make sure everything with dates involved has the capability for feb 29th
 # ensure clarity (e.g GetBookDetails also gives the author of the book, Loans also attatch student name)
 # formatting (comments, indentation etc)
+# make sure databasedefinition and both AM and LM match up. 
 # --- Report ---
 # Backend objectives
 # Frontend objectives
@@ -35,3 +39,5 @@ Example Teacher account:
 # ensure procedures - everything is logged and permission checked at some point between button press and result
 # --- Report ---
 # Ensure all diagrams and objectives match current program
+
+
