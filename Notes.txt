@@ -14,7 +14,7 @@ Example Teacher account:
 # TODO:
 # --- LibraryManager ---
 # first, check everything works and does as it says it does. - Done.
-# have Librarymanager inherit accountmanager (if possible) - NOT DONE
+# have Librarymanager inherit accountmanager (if possible) - NOT DONE. note line 1073 comment (LM)
 # Update methods - Done?
 # delete methods - Done?
 # Getter methods - Done?
