@@ -20,7 +20,7 @@ class AccountManager:
 			self.__SysCurs = self.__SysConn.cursor()
 			self.__LibConn = sqlite3.connect("Databases/LibraryData.db")
 			self.__LibCurs = self.__LibConn.cursor()
-			self.__CurrentUser = "None"
+			self.__CurrentUser = None
 			self.__CurrentAccessLevel = "None"
 			self.__LogFile = open("Log.txt", "a")
 		except Exception as e:  
@@ -74,7 +74,7 @@ class AccountManager:
 				self.Log(f"{self.__CurrentUser} attempted to remove staff: Input ID ({ID}) does not exist")
 				return "Error: ID does not exist"
 			# Self-deletion check
-			if ID == self.__CurrentUser:
+			if int(ID) == self.__CurrentUser:
 				self.Log(f"{self.__CurrentUser} attempted to delete their own account")
 				return "Error: You cannot delete your own account"
 			# Deletes data
@@ -101,13 +101,14 @@ class AccountManager:
 			self.__SysCurs.execute(
 				"SELECT SettingValue from Settings where SettingName = 'DefaultMaxLoans'",
 			)
-			MaxLoans = self.__SysCurs.fetchone()
+			MaxLoansRow = self.__SysCurs.fetchone()
+			MaxLoans = int(MaxLoansRow[0]) if MaxLoansRow else 3
 			# Finds next free ID
 			ID = self.GetNextID(self.__LibCurs, "Students", "UStuID")
 			# Inserts new data
 			self.__LibCurs.execute(
 				"INSERT INTO Students (UStuID, Forename, Surname, MaxActiveLoans, EntryYear)  VALUES (?, ?, ?, ?, ?)",
-				(ID, Forename, Surname, int(MaxLoans[0]), EntryYear)
+				(ID, Forename, Surname, MaxLoans, EntryYear)
 			)
 			# Commits, Logs, Returns confirmation
 			self.Log(f"User {self.__CurrentUser} added student {ID}")
@@ -295,7 +296,7 @@ class AccountManager:
 				self.Log(f"{self.__CurrentUser} attempted to promote staff: Input ID ({ID}) does not exist")
 				return "Error: ID does not exist"
 			# Self-Promotion Check
-			elif ID == self.__CurrentUser:
+			elif int(ID) == self.__CurrentUser:
 				self.Log(f"{self.__CurrentUser} attempted to self-promote")
 				return "Access Denied: you cannot promote yourself."
 			# Finds the current access level given ID
@@ -336,7 +337,7 @@ class AccountManager:
 				self.Log(f"{self.__CurrentUser} attempted to demote staff: Input ID ({ID}) does not exist")
 				return "Error: ID does not exist"
 			# Self-Demotion Check
-			elif ID == self.__CurrentUser:
+			elif int(ID) == self.__CurrentUser:
 				self.Log(f"{self.__CurrentUser} attempted to self-demote")
 				return "Access Denied: you cannot demote yourself."
 			# Finds the current access level given ID
@@ -466,7 +467,7 @@ class AccountManager:
 				self.Log(f"A user attempted to log in: Invalid Password")
 				return "Invalid ID or Password"
 			#Assigns CurrentUser and CurrentAccessLevel their respective values
-			self.__CurrentUser = str(row[0])
+			self.__CurrentUser = int(row[0])
 			self.__CurrentAccessLevel = str(row[5])
 			# Logs the login and returns confirmation
 			self.Log(f"User {self.__CurrentUser} logged in")
@@ -480,7 +481,7 @@ class AccountManager:
 		# Logs logging out
 		self.Log(f"User {self.__CurrentUser} logged out")
 		# Sets current user and access level to None
-		self.__CurrentUser = "None"
+		self.__CurrentUser = None
 		self.__CurrentAccessLevel = "None"
 		# Returns confirmation
 		return "Logged out successfully"
@@ -588,7 +589,7 @@ class AccountManager:
 		CurrentValue = RoleHierarchy.get(self.__CurrentAccessLevel, 0)
 		NecessaryValue = RoleHierarchy.get(NecessaryPerms, 100) # Default to 100 so unknown perms fail
 		# Compare values
-		if self.__CurrentUser == "None":
+		if self.__CurrentUser is None:
 			return "No User logged in"
 		# Active account check
 		if self.IsAccountActive(self.__SysCurs, "Staff", "UStaID", self.__CurrentUser) != True:
@@ -627,7 +628,10 @@ class AccountManager:
 			f"SELECT AccountActive FROM {Table} WHERE {IDcolumn} = ?",
 			(ID, )
 		)
-		return Cursor.fetchone()[0] == 1
+		Result = Cursor.fetchone()
+		if Result is None:
+			return False
+		return Result[0] == 1
 	   
 	def CheckStaffMemberActive(self, ID):
 		# Public method for making checks within the SystemConfig file, as LibraryManager will not have access to this
@@ -662,4 +666,3 @@ class AccountManager:
 		except Exception as e:
 			return f"Search Error: {e}"
 		
-AM = AccountManager()

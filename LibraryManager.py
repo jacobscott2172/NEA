@@ -719,7 +719,7 @@ class LibraryManager:
 				""", (UCID,))
 			result = self.__Curs.fetchone()
 			if not result:
-				return "Error: Book not found"
+				return False
 			ISBN = result[0]
 			self.__Curs.execute("""
 					SELECT COUNT(*) 
@@ -1069,6 +1069,3 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to retrieve a list of reservations for today and encountered an error: {e}")
 			return f"System error: {e}"	
 
- 
-# "AM" is not defined - error
-LM = LibraryManager(AM)
