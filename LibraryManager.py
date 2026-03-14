@@ -591,47 +591,57 @@ class LibraryManager:
 		except Exception as e:
 			return f"Search Error: {e}"
 
-# --- Notification Methods ---
-	def CreateReservationNotification(self, URID):
+# --- StartUp ---
+	def StartUp(self):
 		try:
 			# Permission check
 			if self.__AM.CheckPermission("Teacher") != True:
 				return "Access Denied: Insufficient Permissions."
-			# Retrieves reservation details to find the staff member and book title
+			# Emails students whose loans are due back tomorrow
+			DueTomorrowResult = self.SendDueTomorrowNotifications()
+			self.__AM.Log(f"StartUp: SendDueTomorrowNotifications - {DueTomorrowResult}")
+			# Emails students whose loans are already overdue
+			OverdueResult = self.SendOverdueNotifications()
+			self.__AM.Log(f"StartUp: SendOverdueNotifications - {OverdueResult}")
+			# Finds all reservations for today and emails the respective teacher for each
+			Today = int(datetime.now().strftime("%Y%m%d"))
 			self.__Curs.execute("""
-				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID
+				SELECT Reservations.URID, Books.Title, Reservations.Quantity, Reservations.UStaID, Staff.Email, Staff.Forename, Staff.Surname
 				FROM Reservations
 				JOIN Books ON Reservations.ISBN = Books.ISBN
-				WHERE Reservations.URID = ?
-			""", (URID,))
-			Reservation = self.__Curs.fetchone()
-			if not Reservation:
-				return "Reservation not found."
-			Title = Reservation[1]
-			ReservationDate = Reservation[2]
-			Quantity = Reservation[3]
-			UStaID = Reservation[4]
-			# Finds which copies to collect and from where
-			PickList = self.__FindReservationStock(URID)
-			if isinstance(PickList, str):
-				# FindReservationStock returned an error or insufficient stock message
-				return PickList
-			if PickList is None:
-				return "Error finding reservation stock."
-			# Builds the email body from the picklist
-			# Each entry in PickList is [UCID1, UCID2, ..., RoomName]
-			Body = f"Reservation #{URID} - {Title}\n"
-			Body += f"Date: {ReservationDate}, Quantity: {Quantity}\n\n"
-			Body += "Copies to collect:\n"
-			for Entry in PickList:
-				RoomName = Entry[-1]
-				CopyIDs = Entry[:-1]
-				Body += f"  Room {RoomName}: copies {', '.join(str(c) for c in CopyIDs)}\n"
-			# Creates the notification in SystemConfig via AccountManager
-			return self.__AM.CreateNotification(UStaID, Body)
+				JOIN Staff ON Reservations.UStaID = Staff.UStaID
+				WHERE Reservations.ReservationDate = ?
+			""", (Today,))
+			TodaysReservations = self.__Curs.fetchall()
+			ReservationsSent = 0
+			for Reservation in TodaysReservations:
+				URID, Title, Quantity, UStaID, Email, Forename, Surname = Reservation
+				if not Email:
+					self.__AM.Log(f"StartUp: Reservation {URID} notification skipped for staff {UStaID}: no email address on record")
+					continue
+				# Finds which copies to collect and from where
+				PickList = self.__FindReservationStock(URID)
+				if isinstance(PickList, str) or PickList is None:
+					self.__AM.Log(f"StartUp: Could not find stock for reservation {URID}: {PickList}")
+					continue
+				# Builds email body from picklist
+				Body = f"Dear {Forename} {Surname},\n\nYour reservation for today is ready to collect:\n"
+				Body += f"  Title: {Title}, Quantity: {Quantity}\n\nCopies to collect:\n"
+				for Entry in PickList:
+					RoomName = Entry[-1]
+					CopyIDs = Entry[:-1]
+					Body += f"  Room {RoomName}: copies {', '.join(str(c) for c in CopyIDs)}\n"
+				Result = self.__AM.SendEmail(Email, "Library Reservation Ready", Body)
+				if Result == True:
+					ReservationsSent += 1
+				else:
+					self.__AM.Log(f"StartUp: Failed to send reservation notification for {URID} to staff {UStaID}")
+			self.__AM.Log(f"StartUp: Sent {ReservationsSent} of {len(TodaysReservations)} reservation notifications")
+			return f"StartUp complete. Due tomorrow: {DueTomorrowResult}. Overdue: {OverdueResult}. Reservation notifications: {ReservationsSent}/{len(TodaysReservations)}."
 		except Exception as e:
-			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} encountered an error creating reservation notification for {URID}: {e}")
+			self.__AM.Log(f"StartUp encountered an error: {e}")
 			return f"System error: {e}"
+
 
 # --- Overdue Methods ---
 	def GetOverdueLoans(self):

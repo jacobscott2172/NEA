@@ -195,16 +195,3 @@ curs2.execute('''
               ''')
 
 conn2.commit()
-
-# unplanned
-# this stores notifications, when a user logs in notifications for their reservations are generated
-curs2.execute('''
-           CREATE TABLE IF NOT EXISTS Notifications(
-           UNID INTEGER PRIMARY KEY NOT NULL,
-           UStaID INTEGER NOT NULL,
-           NotifBody TEXT NOT NULL,
-           Delivered BOOLEAN NOT NULL DEFAULT FALSE,
-           FOREIGN KEY (UStaID) REFERENCES Staff(UStaID)
-            )''')
-
-conn2.commit()
