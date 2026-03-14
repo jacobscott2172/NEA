@@ -30,10 +30,10 @@ class LibraryManager:
 				return "Access Denied: Insufficient Permissions."
 			# Duplicate check
 			self.__Curs.execute("""
-					SELECT UAID 
-					FROM Authors 
-					WHERE Forename = ? AND Middlenames = ? AND Surname = ?
-					""",(Forename, Middlename, Surname))
+				SELECT UAID
+				FROM Authors
+				WHERE Forename = ? AND Middlenames = ? AND Surname = ?
+			""",(Forename, Middlename, Surname))
 			ExistingAuthor = self.__Curs.fetchone()
 			if ExistingAuthor:
 				# Author already exists, return their UAID
@@ -42,9 +42,9 @@ class LibraryManager:
 			ID = self.__AM.GetNextID(self.__Curs, "Authors", "UAID")
 			# Inserts author
 			self.__Curs.execute("""
-					INSERT INTO Authors (UAID, Forename, Middlenames, Surname) 
-					VALUES (?, ?, ?, ?)
-				""",(ID, Forename, Middlename, Surname))
+				INSERT INTO Authors (UAID, Forename, Middlenames, Surname)
+				VALUES (?, ?, ?, ?)
+			""",(ID, Forename, Middlename, Surname))
 			# Commits, Logs, Returns confirmation
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} added author {ID}")
@@ -62,18 +62,18 @@ class LibraryManager:
 				return "Access Denied: Insufficient Permissions."
 			# Check if author exists
 			self.__Curs.execute("""
-					SELECT UAID 
-					FROM Authors 
-					WHERE UAID = ?
-				""",(UAID,))
+				SELECT UAID
+				FROM Authors
+				WHERE UAID = ?
+			""",(UAID,))
 			Author = self.__Curs.fetchone()
 			if not Author:
 				return "Author not found."
 			# Remove author
 			self.__Curs.execute("""
-					DELETE FROM Authors 
-					WHERE UAID = ?
-				""",(UAID,))
+				DELETE FROM Authors
+				WHERE UAID = ?
+			""",(UAID,))
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} removed author {UAID}")
 			return "Author removed successfully"
@@ -93,19 +93,19 @@ class LibraryManager:
 				return message # Returns the error message string
 			# Duplicate check
 			self.__Curs.execute("""
-					SELECT ISBN 
-					FROM Books 
-					WHERE ISBN = ?
-				""",(ISBN,))
+				SELECT ISBN
+				FROM Books
+				WHERE ISBN = ?
+			""",(ISBN,))
 			ExistingBook = self.__Curs.fetchone()
 			if ExistingBook:
 				# Book already exists, return their ISBN
 				return ExistingBook[0]
 			# Inserts book
 			self.__Curs.execute("""
-					INSERT INTO Books (ISBN, Title, Genre, Subject)
-					VALUES (?, ?, ?, ?)
-				""",(ISBN, Title, Genre, Subject))
+				INSERT INTO Books (ISBN, Title, Genre, Subject)
+				VALUES (?, ?, ?, ?)
+			""",(ISBN, Title, Genre, Subject))
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} added book {ISBN}")
 			return ISBN
@@ -116,6 +116,9 @@ class LibraryManager:
 
 	def StreamlinedAddBook(self, ISBN, Title, Genre, Subject, ForenameList, MiddlenameList, SurnameList):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to add a book with authors: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			UAIDList = []
 			for x in range(len(ForenameList)):
 				Forename = ForenameList[x]
@@ -142,18 +145,18 @@ class LibraryManager:
 				return "Access Denied: Insufficient Permissions."
 			# Check if book exists
 			self.__Curs.execute("""
-					SELECT ISBN 
-					FROM Books 
-					WHERE ISBN = ?
-				""",(ISBN,))
+				SELECT ISBN
+				FROM Books
+				WHERE ISBN = ?
+			""",(ISBN,))
 			Book = self.__Curs.fetchone()
 			if not Book:
 				return "Book not found."
 			# Remove book
 			self.__Curs.execute("""
-					DELETE FROM Books 
-					WHERE ISBN = ?
-				""",(ISBN,))
+				DELETE FROM Books
+				WHERE ISBN = ?
+			""",(ISBN,))
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} removed book {ISBN}")
 			return "Book removed successfully"
@@ -168,9 +171,9 @@ class LibraryManager:
 				return "Access Denied: Insufficient Permissions."
 			for ID in UAIDList:
 				self.__Curs.execute("""
-						INSERT INTO BooksAuthors (ISBN, UAID)
-						VALUES (?, ?)
-					""",(ISBN, ID))
+					INSERT INTO BooksAuthors (ISBN, UAID)
+					VALUES (?, ?)
+				""",(ISBN, ID))
 				self.__AM.Log(f"User {self.__AM.GetCurrentUser()} Linked an author (ID: {ID}) to book (ISBN: {ISBN})")
 			self.__Conn.commit()
 		# Error handling amd logging
@@ -184,9 +187,9 @@ class LibraryManager:
 			if self.__AM.CheckPermission("Teacher") != True:
 				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-					DELETE FROM BooksAuthors 
-					WHERE ISBN = ?
-				""",(ISBN,))
+				DELETE FROM BooksAuthors
+				WHERE ISBN = ?
+			""",(ISBN,))
 			self.__Conn.commit()
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} unlinked all authors from book (ISBN: {ISBN})")
 		# Error handling amd logging
@@ -202,9 +205,9 @@ class LibraryManager:
 				return "Access Denied: Insufficient Permissions."
 			ULocID = self.__AM.GetNextID(self.__Curs, "Locations", "ULocID")
 			self.__Curs.execute("""
-					INSERT INTO Locations (ULocID, ClassCode) 
-					VALUES (?, ?)
-				""",(ULocID, ClassCode))
+				INSERT INTO Locations (ULocID, ClassCode)
+				VALUES (?, ?)
+			""",(ULocID, ClassCode))
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} added location {ULocID}")
 			return "Location added successfully"
@@ -219,18 +222,18 @@ class LibraryManager:
 				return "Access Denied: Insufficient Permissions."
 			# Check if location exists
 			self.__Curs.execute("""
-					SELECT ULocID 
-					FROM Locations 
-					WHERE ULocID = ?
-				""",(ULocID,))
+				SELECT ULocID
+				FROM Locations
+				WHERE ULocID = ?
+			""",(ULocID,))
 			Location = self.__Curs.fetchone()
 			if not Location:
 				return "Location not found."
 			# Remove location
 			self.__Curs.execute("""
-					DELETE FROM Locations 
-					WHERE ULocID = ?
-				""",(ULocID,))
+				DELETE FROM Locations
+				WHERE ULocID = ?
+			""",(ULocID,))
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} removed location {ULocID}")
 			return "Location removed successfully"
@@ -246,9 +249,9 @@ class LibraryManager:
 				return "Access Denied: Insufficient Permissions."
 			UCID = self.__AM.GetNextID(self.__Curs, "Copies", "UCID")
 			self.__Curs.execute("""
-					INSERT INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID, Status) 
-					VALUES (?, ?, ?, ?, ?)
-				""",(UCID, ISBN, ULocID, ULocID, "Available"))
+				INSERT INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID, Status)
+				VALUES (?, ?, ?, ?, ?)
+			""",(UCID, ISBN, ULocID, ULocID, "Available"))
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} added copy {UCID} of book {ISBN}")
 			return "Copy added successfully"
@@ -264,9 +267,9 @@ class LibraryManager:
 			for n in range(Quantity):
 				UCID = self.__AM.GetNextID(self.__Curs, "Copies", "UCID")
 				self.__Curs.execute("""
-						INSERT INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID, Status) 
-						VALUES (?, ?, ?, ?, ?)
-					""",(UCID, ISBN, ULocID, ULocID, "Available"))
+					INSERT INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID, Status)
+					VALUES (?, ?, ?, ?, ?)
+				""",(UCID, ISBN, ULocID, ULocID, "Available"))
 				self.__AM.Log(f"{self.__AM.GetCurrentUser()} added copy {UCID} of book {ISBN}")
 			self.__Conn.commit()
 			return f"{Quantity} copies added successfully"
@@ -280,10 +283,10 @@ class LibraryManager:
 			if self.__AM.CheckPermission("Teacher") != True:
 				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-					UPDATE Copies 
-					SET CurrentLocationID = ? 
-					WHERE UCID = ?
-				""",(NewULocID, UCID))
+				UPDATE Copies
+				SET CurrentLocationID = ?
+				WHERE UCID = ?
+			""",(NewULocID, UCID))
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} moved copy {UCID} to location {NewULocID}")
 			return "Copy moved successfully"
@@ -297,10 +300,10 @@ class LibraryManager:
 			if self.__AM.CheckPermission("Teacher") != True:
 				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-					UPDATE Copies 
-					SET HomeLocationID = ? 
-					WHERE UCID = ?
-				""",(NewULocID, UCID))
+				UPDATE Copies
+				SET HomeLocationID = ?
+				WHERE UCID = ?
+			""",(NewULocID, UCID))
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} changed home location of copy {UCID} to {NewULocID}")
 			return "Copy home location changed successfully"
@@ -315,18 +318,18 @@ class LibraryManager:
 				return "Access Denied: Insufficient Permissions."
 			# Check if copy exists
 			self.__Curs.execute("""
-					SELECT UCID 
-					FROM Copies 
-					WHERE UCID = ?
-				""",(UCID,))
+				SELECT UCID
+				FROM Copies
+				WHERE UCID = ?
+			""",(UCID,))
 			Copy = self.__Curs.fetchone()
 			if not Copy:
 				return "Copy not found."
 			# Remove copy
 			self.__Curs.execute("""
-					DELETE FROM Copies 
-					WHERE UCID = ?
-				""",(UCID,))
+				DELETE FROM Copies
+				WHERE UCID = ?
+			""",(UCID,))
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} removed copy {UCID}")
 			return "Copy removed successfully"
@@ -340,12 +343,17 @@ class LibraryManager:
 			# Permission check
 			if self.__AM.CheckPermission("Teacher") != True:
 				return "Access Denied: Insufficient Permissions."
+			# Check student exists and account is active
+			if not self.__AM.CheckIDExists(self.__Curs, "Students", "UStuID", UStuID):
+				return "Error: Student ID does not exist."
+			if not self.__AM.IsAccountActive(self.__Curs, "Students", "UStuID", UStuID):
+				return "Error: Student account is inactive."
 			# Check if copy is available
 			self.__Curs.execute("""
-					SELECT Status 
-					FROM Copies 
-					WHERE UCID = ?
-				""",(UCID,))
+				SELECT Status
+				FROM Copies
+				WHERE UCID = ?
+			""",(UCID,))
 			Status = self.__Curs.fetchone()
 			if not Status or Status[0] != "Available":
 				return "Copy is not available for loan."
@@ -357,15 +365,15 @@ class LibraryManager:
 			# Issue loan
 			ULoanID = self.__AM.GetNextID(self.__Curs, "Loans", "ULoanID")
 			self.__Curs.execute("""
-					INSERT INTO Loans (ULoanID, UStuID, UStaID, UCID, LoanDate, DueDate, ReturnDate) 
-					VALUES (?, ?, ?, ?, ?, ?, ?)
-				""",(ULoanID, UStuID, self.__AM.GetCurrentUser(), UCID, LoanDate, DueDate, None))
+				INSERT INTO Loans (ULoanID, UStuID, UStaID, UCID, LoanDate, DueDate, ReturnDate)
+				VALUES (?, ?, ?, ?, ?, ?, ?)
+			""",(ULoanID, UStuID, self.__AM.GetCurrentUser(), UCID, LoanDate, DueDate, None))
 			# Update copy status
 			self.__Curs.execute("""
-					UPDATE Copies 
-					SET Status = 'On Loan', CurrentLocationID = ? 
-					WHERE UCID = ?
-				""",(self.__OnLoanLocation, UCID))
+				UPDATE Copies
+				SET Status = 'On Loan', CurrentLocationID = ?
+				WHERE UCID = ?
+			""",(self.__OnLoanLocation, UCID))
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} issued loan {ULoanID} of copy {UCID} to student {UStuID}")
 			return "Loan issued successfully"
@@ -380,10 +388,10 @@ class LibraryManager:
 				return "Access Denied: Insufficient Permissions."
 			# Check if loan exists and is not already returned
 			self.__Curs.execute("""
-					SELECT UCID, ReturnDate 
-					FROM Loans 
-					WHERE ULoanID = ?
-				""",(ULoanID,))
+				SELECT UCID, ReturnDate
+				FROM Loans
+				WHERE ULoanID = ?
+			""",(ULoanID,))
 			Loan = self.__Curs.fetchone()
 			if not Loan:
 				return "Loan not found."
@@ -393,19 +401,31 @@ class LibraryManager:
 			# Update loan return date
 			ReturnDateValue = int(datetime.now().strftime("%Y%m%d"))
 			self.__Curs.execute("""
-					UPDATE Loans 
-					SET ReturnDate = ? 
-					WHERE ULoanID = ?
-				""",(ReturnDateValue, ULoanID))
+				UPDATE Loans
+				SET ReturnDate = ?
+				WHERE ULoanID = ?
+			""",(ReturnDateValue, ULoanID))
 			# Update copy status
 			self.__Curs.execute("""
-					UPDATE Copies 
-					SET Status = 'Available', CurrentLocationID = HomeLocationID 
-					WHERE UCID = ?
-				""",(UCID,))
+				UPDATE Copies
+				SET Status = 'Available', CurrentLocationID = HomeLocationID
+				WHERE UCID = ?
+			""",(UCID,))
+			# Retrieve book title and student name for confirmation message
+			self.__Curs.execute("""
+				SELECT Books.Title, Students.Forename, Students.Surname
+				FROM Loans
+				JOIN Copies ON Loans.UCID = Copies.UCID
+				JOIN Books ON Copies.ISBN = Books.ISBN
+				JOIN Students ON Loans.UStuID = Students.UStuID
+				WHERE Loans.ULoanID = ?
+			""",(ULoanID,))
+			LoanInfo = self.__Curs.fetchone()
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} processed return of loan {ULoanID} for copy {UCID}")
-			return "Loan returned successfully"
+			if LoanInfo:
+				return f"Loan returned successfully: '{LoanInfo[0]}' from {LoanInfo[1]} {LoanInfo[2]}."
+			return "Loan returned successfully."
 		except Exception as e:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to return a loan and encountered an error: {e}")
 			return f"System error: {e}"
@@ -435,9 +455,9 @@ class LibraryManager:
 			CutOffDate = int(f"{Year}{Month:02d}{Day:02d}")
 			# Deletes all returned loans older than the cut off date in one operation
 			self.__Curs.execute("""
-					DELETE FROM Loans
-					WHERE ReturnDate IS NOT NULL AND ReturnDate < ?
-				""",(CutOffDate,))
+				DELETE FROM Loans
+				WHERE ReturnDate IS NOT NULL AND ReturnDate < ?
+			""",(CutOffDate,))
 			LoansDeleted = self.__Curs.rowcount
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} cleared {LoansDeleted} old loans with return date before {CutOffDate}")
@@ -473,9 +493,9 @@ class LibraryManager:
 			CutOffDate = int(f"{Year}{Month:02d}{Day:02d}")
 			# Deletes all reservations older than the cut off date in one operation
 			self.__Curs.execute("""
-					DELETE FROM Reservations
-					WHERE ReservationDate < ?
-				""",(CutOffDate,))
+				DELETE FROM Reservations
+				WHERE ReservationDate < ?
+			""",(CutOffDate,))
 			ReservationsDeleted = self.__Curs.rowcount
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} cleared {ReservationsDeleted} old reservations with date before {CutOffDate}")
@@ -494,9 +514,9 @@ class LibraryManager:
 			# Issue reservation
 			URID = self.__AM.GetNextID(self.__Curs, "Reservations", "URID")
 			self.__Curs.execute("""
-					INSERT INTO Reservations (URID, ULocID, CreationDate, ReservationDate, ISBN, UStaID, Quantity) 
-					VALUES (?, ?, ?, ?, ?, ?, ?)
-					""",(URID, ULocID, CreationDate, ReservationDate, ISBN, UStaID, Quantity))
+				INSERT INTO Reservations (URID, ULocID, CreationDate, ReservationDate, ISBN, UStaID, Quantity)
+				VALUES (?, ?, ?, ?, ?, ?, ?)
+			""",(URID, ULocID, CreationDate, ReservationDate, ISBN, UStaID, Quantity))
 			self.__Conn.commit()
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} issued reservation {URID} for book {ISBN}")
 			return "Reservation issued successfully"
@@ -504,11 +524,150 @@ class LibraryManager:
 			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to issue a reservation and encountered an error: {e}")
 			return f"System error: {e}"
 			
+# --- Update methods ---
+	def UpdateBookDetails(self, ISBN, Title, Genre, Subject):
+		try:
+			if self.__AM.CheckPermission("Admin") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to update book {ISBN}: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
+			if not self.__AM.CheckIDExists(self.__Curs, "Books", "ISBN", ISBN):
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to update book {ISBN}: ISBN does not exist")
+				return "Error: ISBN does not exist"
+			self.__Curs.execute("""
+				UPDATE Books
+				SET Title = ?, Genre = ?, Subject = ?
+				WHERE ISBN = ?
+			""", (Title, Genre, Subject, ISBN))
+			self.__Conn.commit()
+			self.__AM.Log(f"{self.__AM.GetCurrentUser()} updated details for book {ISBN}")
+			return "Book details updated successfully"
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to update book {ISBN} and encountered an error: {e}")
+			return f"System error: {e}"
+
+	def UpdateCopyStatus(self, UCID, Status):
+		try:
+			if self.__AM.CheckPermission("Admin") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to update status of copy {UCID}: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
+			if not self.__AM.CheckIDExists(self.__Curs, "Copies", "UCID", UCID):
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to update status of copy {UCID}: UCID does not exist")
+				return "Error: Copy does not exist"
+			ValidStatuses = ["Available", "On Loan", "Reserved", "Lost", "Damaged"]
+			if Status not in ValidStatuses:
+				return f"Error: Invalid status. Must be one of: {', '.join(ValidStatuses)}"
+			self.__Curs.execute("""
+				UPDATE Copies
+				SET Status = ?
+				WHERE UCID = ?
+			""", (Status, UCID))
+			self.__Conn.commit()
+			self.__AM.Log(f"{self.__AM.GetCurrentUser()} updated status of copy {UCID} to {Status}")
+			return f"Copy status updated to {Status}"
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to update status of copy {UCID} and encountered an error: {e}")
+			return f"System error: {e}"
+
+	def UpdateReservation(self, URID, ULocID, ReservationDate, Quantity):
+		try:
+			# Retrieve the reservation to check ownership
+			self.__Curs.execute("""
+				SELECT UStaID
+				FROM Reservations
+				WHERE URID = ?
+			""", (URID,))
+			Result = self.__Curs.fetchone()
+			if not Result:
+				return "Error: Reservation does not exist"
+			Owner = Result[0]
+			# Teachers can only update their own reservations; Admins can update any
+			IsOwner = self.__AM.GetCurrentUser() == Owner
+			IsAdmin = self.__AM.CheckPermission("Admin") == True
+			if not IsOwner and not IsAdmin:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to update reservation {URID}: Insufficient permissions")
+				return "Access Denied: You can only update your own reservations."
+			self.__Curs.execute("""
+				UPDATE Reservations
+				SET ULocID = ?, ReservationDate = ?, Quantity = ?
+				WHERE URID = ?
+			""", (ULocID, ReservationDate, Quantity, URID))
+			self.__Conn.commit()
+			self.__AM.Log(f"{self.__AM.GetCurrentUser()} updated reservation {URID}")
+			return "Reservation updated successfully"
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to update reservation {URID} and encountered an error: {e}")
+			return f"System error: {e}"
+
+	def DeleteReservation(self, URID):
+		try:
+			# Retrieve the reservation to check ownership
+			self.__Curs.execute("""
+				SELECT UStaID
+				FROM Reservations
+				WHERE URID = ?
+			""", (URID,))
+			Result = self.__Curs.fetchone()
+			if not Result:
+				return "Error: Reservation does not exist"
+			Owner = Result[0]
+			# Teachers can only delete their own reservations; Admins can delete any
+			IsOwner = self.__AM.GetCurrentUser() == Owner
+			IsAdmin = self.__AM.CheckPermission("Admin") == True
+			if not IsOwner and not IsAdmin:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to delete reservation {URID}: Insufficient permissions")
+				return "Access Denied: You can only delete your own reservations."
+			self.__Curs.execute("""
+				DELETE FROM Reservations
+				WHERE URID = ?
+			""", (URID,))
+			self.__Conn.commit()
+			self.__AM.Log(f"{self.__AM.GetCurrentUser()} deleted reservation {URID}")
+			return "Reservation deleted successfully"
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to delete reservation {URID} and encountered an error: {e}")
+			return f"System error: {e}"
+
+	def DeleteLoan(self, ULoanID):
+		try:
+			if self.__AM.CheckPermission("Admin") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to delete loan {ULoanID}: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
+			self.__Curs.execute("""
+				SELECT UCID, ReturnDate
+				FROM Loans
+				WHERE ULoanID = ?
+			""", (ULoanID,))
+			Result = self.__Curs.fetchone()
+			if not Result:
+				return "Error: Loan does not exist"
+			UCID, ReturnDate = Result
+			# If the loan is still active, reset the copy status before deleting
+			if ReturnDate is None:
+				self.__Curs.execute("""
+					UPDATE Copies
+					SET Status = 'Available', CurrentLocationID = HomeLocationID
+					WHERE UCID = ?
+				""", (UCID,))
+			self.__Curs.execute("""
+				DELETE FROM Loans
+				WHERE ULoanID = ?
+			""", (ULoanID,))
+			self.__Conn.commit()
+			self.__AM.Log(f"{self.__AM.GetCurrentUser()} deleted loan {ULoanID}")
+			return "Loan deleted successfully"
+		except Exception as e:
+			self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to delete loan {ULoanID} and encountered an error: {e}")
+			return f"System error: {e}"
+
+
 # --- Search Methods ---
 	def SearchBooks(self, SearchTerm):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to search books: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			Term = f"%{SearchTerm}%"
-			self.__Curs.execute( """
+			self.__Curs.execute("""
 				SELECT Books.ISBN, Books.Title, Authors.Surname, Books.Genre, Books.Subject
 				FROM Books
 				JOIN BooksAuthors ON Books.ISBN = BooksAuthors.ISBN
@@ -522,13 +681,18 @@ class LibraryManager:
 		
 	def SearchReservations(self, SearchTerm):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to search reservations: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			Term = f"%{SearchTerm}%"
 			self.__Curs.execute("""
-				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity
+				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID, Staff.Forename, Staff.Surname, Locations.ClassCode
 				FROM Reservations
 				JOIN Books ON Reservations.ISBN = Books.ISBN
-				WHERE Books.Title LIKE ? OR CAST(Reservations.URID AS TEXT) LIKE ?
-			""", (Term, Term))
+				JOIN Staff ON Reservations.UStaID = Staff.UStaID
+				JOIN Locations ON Reservations.ULocID = Locations.ULocID
+				WHERE Books.Title LIKE ? OR CAST(Books.ISBN AS TEXT) LIKE ? OR CAST(Reservations.URID AS TEXT) LIKE ? OR Staff.Forename LIKE ? OR Staff.Surname LIKE ? OR CAST(Reservations.UStaID AS TEXT) LIKE ?
+			""", (Term, Term, Term, Term, Term, Term))
 			Results = self.__Curs.fetchall()
 			return Results if Results else f"Could not find any reservations matching '{SearchTerm}'."
 		except Exception as e:
@@ -536,14 +700,18 @@ class LibraryManager:
 		
 	def SearchCopies(self, SearchTerm):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to search copies: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			Term = f"%{SearchTerm}%"
 			self.__Curs.execute("""
-				SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, Locations.ClassCode
+				SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
 				FROM Copies
 				JOIN Books ON Copies.ISBN = Books.ISBN
-				JOIN Locations ON Copies.CurrentLocationID = Locations.ULocID
-				WHERE CAST(Copies.UCID AS TEXT) LIKE ? OR Books.Title LIKE ? OR Books.ISBN LIKE ? OR Locations.ClassCode LIKE ?
-			""", (Term, Term, Term, Term))
+				JOIN Locations AS CurrentLoc ON Copies.CurrentLocationID = CurrentLoc.ULocID
+				JOIN Locations AS HomeLoc ON Copies.HomeLocationID = HomeLoc.ULocID
+				WHERE CAST(Copies.UCID AS TEXT) LIKE ? OR Books.Title LIKE ? OR Books.ISBN LIKE ? OR CurrentLoc.ClassCode LIKE ? OR HomeLoc.ClassCode LIKE ?
+			""", (Term, Term, Term, Term, Term))
 			Results = self.__Curs.fetchall()
 			return Results if Results else f"Could not find any book copies matching '{SearchTerm}'."
 		except Exception as e:
@@ -551,10 +719,13 @@ class LibraryManager:
 
 	def SearchLocations(self, SearchTerm):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to search locations: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			Term = f"%{SearchTerm}%"
 			self.__Curs.execute("""
-				SELECT ULocID, ClassCode 
-				FROM Locations 
+				SELECT ULocID, ClassCode
+				FROM Locations
 				WHERE ClassCode LIKE ?
 			""", (Term,))
 			Results = self.__Curs.fetchall()
@@ -564,6 +735,9 @@ class LibraryManager:
 		
 	def SearchAuthors(self, SearchTerm):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to search authors: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			Term = f"%{SearchTerm}%"
 			self.__Curs.execute("""
 				SELECT UAID, Forename, Middlenames, Surname
@@ -577,6 +751,9 @@ class LibraryManager:
 		
 	def SearchLoans(self, SearchTerm):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to search loans: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			Term = f"%{SearchTerm}%"
 			self.__Curs.execute("""
 				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate, Loans.UStuID, Loans.UStaID, Copies.UCID, Students.Forename, Students.Surname
@@ -591,59 +768,7 @@ class LibraryManager:
 		except Exception as e:
 			return f"Search Error: {e}"
 
-# --- StartUp ---
-	def StartUp(self):
-		try:
-			# Permission check
-			if self.__AM.CheckPermission("Teacher") != True:
-				return "Access Denied: Insufficient Permissions."
-			# Emails students whose loans are due back tomorrow
-			DueTomorrowResult = self.SendDueTomorrowNotifications()
-			self.__AM.Log(f"StartUp: SendDueTomorrowNotifications - {DueTomorrowResult}")
-			# Emails students whose loans are already overdue
-			OverdueResult = self.SendOverdueNotifications()
-			self.__AM.Log(f"StartUp: SendOverdueNotifications - {OverdueResult}")
-			# Finds all reservations for today and emails the respective teacher for each
-			Today = int(datetime.now().strftime("%Y%m%d"))
-			self.__Curs.execute("""
-				SELECT Reservations.URID, Books.Title, Reservations.Quantity, Reservations.UStaID, Staff.Email, Staff.Forename, Staff.Surname
-				FROM Reservations
-				JOIN Books ON Reservations.ISBN = Books.ISBN
-				JOIN Staff ON Reservations.UStaID = Staff.UStaID
-				WHERE Reservations.ReservationDate = ?
-			""", (Today,))
-			TodaysReservations = self.__Curs.fetchall()
-			ReservationsSent = 0
-			for Reservation in TodaysReservations:
-				URID, Title, Quantity, UStaID, Email, Forename, Surname = Reservation
-				if not Email:
-					self.__AM.Log(f"StartUp: Reservation {URID} notification skipped for staff {UStaID}: no email address on record")
-					continue
-				# Finds which copies to collect and from where
-				PickList = self.__FindReservationStock(URID)
-				if isinstance(PickList, str) or PickList is None:
-					self.__AM.Log(f"StartUp: Could not find stock for reservation {URID}: {PickList}")
-					continue
-				# Builds email body from picklist
-				Body = f"Dear {Forename} {Surname},\n\nYour reservation for today is ready to collect:\n"
-				Body += f"  Title: {Title}, Quantity: {Quantity}\n\nCopies to collect:\n"
-				for Entry in PickList:
-					RoomName = Entry[-1]
-					CopyIDs = Entry[:-1]
-					Body += f"  Room {RoomName}: copies {', '.join(str(c) for c in CopyIDs)}\n"
-				Result = self.__AM.SendEmail(Email, "Library Reservation Ready", Body)
-				if Result == True:
-					ReservationsSent += 1
-				else:
-					self.__AM.Log(f"StartUp: Failed to send reservation notification for {URID} to staff {UStaID}")
-			self.__AM.Log(f"StartUp: Sent {ReservationsSent} of {len(TodaysReservations)} reservation notifications")
-			return f"StartUp complete. Due tomorrow: {DueTomorrowResult}. Overdue: {OverdueResult}. Reservation notifications: {ReservationsSent}/{len(TodaysReservations)}."
-		except Exception as e:
-			self.__AM.Log(f"StartUp encountered an error: {e}")
-			return f"System error: {e}"
-
-
-# --- Overdue Methods ---
+# --- Notification Methods ---
 	def GetOverdueLoans(self):
 		try:
 			# Permission check
@@ -794,20 +919,20 @@ class LibraryManager:
 	def __FindReservationStock(self, URID):
 		try:
 			self.__Curs.execute("""
-					SELECT ISBN, Quantity
-					FROM Reservations
-					WHERE URID = ?
-				""",(URID,))
+				SELECT ISBN, Quantity
+				FROM Reservations
+				WHERE URID = ?
+			""",(URID,))
 			Result = self.__Curs.fetchone()
 			if not Result:
 				return "Reservation not found."  
 			BookISBN = Result[0]
 			QuantityRemaining = Result[1]
 			self.__Curs.execute("""
-					SELECT UCID, CurrentLocationID 
-					FROM Copies 
-					WHERE ISBN = ? AND Status = 'Available' AND CurrentLocationID != ?
-				""",(BookISBN, self.__OnLoanLocation))
+				SELECT UCID, CurrentLocationID
+				FROM Copies
+				WHERE ISBN = ? AND Status = 'Available' AND CurrentLocationID != ?
+			""",(BookISBN, self.__OnLoanLocation))
 			RawCopies = self.__Curs.fetchall()
 			LocationCounts = []
 			CopyIDsByLocation = {}
@@ -834,10 +959,10 @@ class LibraryManager:
 				RoomID = RoomData[0]
 				AvailableInRoom = RoomData[1]
 				self.__Curs.execute("""
-						SELECT ClassCode 
-						FROM Locations 
-						WHERE ULocID = ?
-					""", (RoomID,))
+					SELECT ClassCode
+					FROM Locations
+					WHERE ULocID = ?
+				""", (RoomID,))
 				RoomNameResult = self.__Curs.fetchone()
 				RoomName = RoomNameResult[0] if RoomNameResult else f"Unknown Room ({RoomID})"
 				AmountToTake = min(AvailableInRoom, QuantityRemaining)
@@ -849,10 +974,10 @@ class LibraryManager:
 				return f"Insufficient stock. Need {QuantityRemaining} more copies."
 			for ReservedUCID in ReservedUCIDs:
 				self.__Curs.execute("""
-						UPDATE Copies 
-						SET Status = 'Reserved' 
-						WHERE UCID = ?
-					""", (ReservedUCID,))
+					UPDATE Copies
+					SET Status = 'Reserved'
+					WHERE UCID = ?
+				""", (ReservedUCID,))
 			self.__Conn.commit()
 			return PickList
 		except Exception as e:
@@ -862,25 +987,26 @@ class LibraryManager:
 	def __LoanStockConflictCheck(self, UCID, LoanDate, DueDate):
 		try:
 			self.__Curs.execute("""
-					SELECT ISBN FROM Copies WHERE UCID = ?
-				""", (UCID,))
+				SELECT ISBN FROM Copies WHERE UCID = ?
+			""", (UCID,))
 			result = self.__Curs.fetchone()
 			if not result:
 				return False
 			ISBN = result[0]
 			self.__Curs.execute("""
-					SELECT COUNT(*) 
-					FROM Copies 
-					WHERE ISBN = ? AND Status IN ('Available', 'Reserved')
-				""", (ISBN,))
+				SELECT COUNT(*)
+				FROM Copies
+				WHERE ISBN = ? AND Status IN ('Available', 'Reserved')
+			""", (ISBN,))
 			StartingStock = self.__Curs.fetchone()[0]
 			Timeline = []
 			self.__Curs.execute("""
-					SELECT Loans.DueDate 
-					FROM Loans 
-					INNER JOIN Copies ON Loans.UCID = Copies.UCID WHERE Copies.ISBN = ? 
-					AND Loans.ReturnDate IS NULL AND Loans.DueDate BETWEEN ? AND ?
-				""",(ISBN, LoanDate, DueDate))
+				SELECT Loans.DueDate
+				FROM Loans
+				INNER JOIN Copies ON Loans.UCID = Copies.UCID
+				WHERE Copies.ISBN = ?
+				AND Loans.ReturnDate IS NULL AND Loans.DueDate BETWEEN ? AND ?
+			""",(ISBN, LoanDate, DueDate))
 			for row in self.__Curs.fetchall():
 				ReturnDate = int(row[0]) 
 				Left = 0
@@ -899,10 +1025,10 @@ class LibraryManager:
 				if not Found:
 					Timeline.insert(Left, [ReturnDate, 1])
 			self.__Curs.execute("""
-					SELECT ReservationDate, Quantity 
-					FROM Reservations 
-					WHERE ISBN = ? AND ReservationDate BETWEEN ? AND ?
-				""",(ISBN, LoanDate, DueDate))
+				SELECT ReservationDate, Quantity
+				FROM Reservations
+				WHERE ISBN = ? AND ReservationDate BETWEEN ? AND ?
+			""",(ISBN, LoanDate, DueDate))
 			for row in self.__Curs.fetchall():
 				ResDate = int(row[0])
 				Qty = row[1]
@@ -954,6 +1080,9 @@ class LibraryManager:
 # --- Getter Methods --- 
 	def GetAuthorDetails(self, UAID):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve author details: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
 				SELECT UAID, Forename, Middlenames, Surname
 				FROM Authors
@@ -967,6 +1096,9 @@ class LibraryManager:
 
 	def GetBookDetails(self, ISBN):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve book details: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
 				SELECT Books.ISBN, Books.Title, Authors.Forename, Authors.Middlenames, Authors.Surname, Books.Genre, Books.Subject
 				FROM Books
@@ -982,6 +1114,9 @@ class LibraryManager:
 	 
 	def GetAuthors(self, ISBN):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve authors for book: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
 				SELECT Authors.UAID, Authors.Forename, Authors.Middlenames, Authors.Surname
 				FROM BooksAuthors
@@ -996,11 +1131,15 @@ class LibraryManager:
 
 	def GetCopyDetails(self, UCID):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve copy details: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-				SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, Locations.ClassCode
+				SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
 				FROM Copies
 				JOIN Books ON Copies.ISBN = Books.ISBN
-				JOIN Locations ON Copies.CurrentLocationID = Locations.ULocID
+				JOIN Locations AS CurrentLoc ON Copies.CurrentLocationID = CurrentLoc.ULocID
+				JOIN Locations AS HomeLoc ON Copies.HomeLocationID = HomeLoc.ULocID
 				WHERE Copies.UCID = ?
 			""", (UCID,))
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved details for copy {UCID}")
@@ -1030,9 +1169,12 @@ class LibraryManager:
 
 	def GetLocationDetails(self, ULocID):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve location details: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-				SELECT ULocID, ClassCode 
-				FROM Locations 
+				SELECT ULocID, ClassCode
+				FROM Locations
 				WHERE ULocID = ?
 			""", (ULocID,))
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved details for location {ULocID}")
@@ -1043,10 +1185,15 @@ class LibraryManager:
 
 	def GetReservationDetails(self, URID):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve reservation details: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity
+				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID, Staff.Forename, Staff.Surname, Locations.ClassCode
 				FROM Reservations
 				JOIN Books ON Reservations.ISBN = Books.ISBN
+				JOIN Staff ON Reservations.UStaID = Staff.UStaID
+				JOIN Locations ON Reservations.ULocID = Locations.ULocID
 				WHERE Reservations.URID = ?
 			""", (URID,))
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved details for reservation {URID}")
@@ -1057,6 +1204,9 @@ class LibraryManager:
 
 	def GetAllAuthors(self):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve all authors: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
 				SELECT UAID, Forename, Middlenames, Surname
 				FROM Authors
@@ -1069,9 +1219,14 @@ class LibraryManager:
 
 	def GetAllBooks(self):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve all books: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-				SELECT ISBN, Title, Genre, Subject
+				SELECT Books.ISBN, Books.Title, Authors.Forename, Authors.Middlenames, Authors.Surname, Books.Genre, Books.Subject
 				FROM Books
+				JOIN BooksAuthors ON Books.ISBN = BooksAuthors.ISBN
+				JOIN Authors ON BooksAuthors.UAID = Authors.UAID
 			""")
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all books")
 			return self.__Curs.fetchall()
@@ -1081,11 +1236,15 @@ class LibraryManager:
 
 	def GetAllBooksAuthored(self, UAID):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve books for author: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-				SELECT Books.ISBN, Books.Title
+				SELECT Books.ISBN, Books.Title, Authors.UAID, Authors.Forename, Authors.Middlenames, Authors.Surname
 				FROM Books
 				JOIN BooksAuthors ON Books.ISBN = BooksAuthors.ISBN
-				WHERE BooksAuthors.UAID = ?
+				JOIN Authors ON BooksAuthors.UAID = Authors.UAID
+				WHERE Authors.UAID = ?
 			""", (UAID,))
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved all books for author {UAID}")
 			return self.__Curs.fetchall()
@@ -1095,11 +1254,15 @@ class LibraryManager:
 
 	def GetAllCopies(self):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve all copies: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-				SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, Locations.ClassCode
+				SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
 				FROM Copies
 				JOIN Books ON Copies.ISBN = Books.ISBN
-				JOIN Locations ON Copies.CurrentLocationID = Locations.ULocID
+				JOIN Locations AS CurrentLoc ON Copies.CurrentLocationID = CurrentLoc.ULocID
+				JOIN Locations AS HomeLoc ON Copies.HomeLocationID = HomeLoc.ULocID
 			""")
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all copies")
 			return self.__Curs.fetchall()
@@ -1109,11 +1272,15 @@ class LibraryManager:
 
 	def GetAllCopiesByISBN(self, ISBN):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve copies for book: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-				SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, Locations.ClassCode
+				SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
 				FROM Copies
 				JOIN Books ON Copies.ISBN = Books.ISBN
-				JOIN Locations ON Copies.CurrentLocationID = Locations.ULocID
+				JOIN Locations AS CurrentLoc ON Copies.CurrentLocationID = CurrentLoc.ULocID
+				JOIN Locations AS HomeLoc ON Copies.HomeLocationID = HomeLoc.ULocID
 				WHERE Books.ISBN = ?
 			""", (ISBN,))
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all copies for book {ISBN}")
@@ -1124,6 +1291,9 @@ class LibraryManager:
 
 	def GetAllLoans(self):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve all loans: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
 				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate, Loans.UStuID, Loans.UStaID, Copies.UCID, Students.Forename, Students.Surname
 				FROM Loans
@@ -1139,6 +1309,9 @@ class LibraryManager:
 
 	def GetAllActiveLoans(self):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve all active loans: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
 				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.UStuID, Loans.UStaID, Copies.UCID, Students.Forename, Students.Surname
 				FROM Loans
@@ -1155,6 +1328,9 @@ class LibraryManager:
 
 	def GetAllLoansByStudent(self, UStuID):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve loans for student: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
 				SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate, Loans.UStaID, Copies.UCID, Students.Forename, Students.Surname
 				FROM Loans
@@ -1171,8 +1347,11 @@ class LibraryManager:
 
 	def GetAllLocations(self):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve all locations: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-				SELECT ULocID, ClassCode 
+				SELECT ULocID, ClassCode
 				FROM Locations
 			""")
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all locations")
@@ -1183,10 +1362,15 @@ class LibraryManager:
 
 	def GetAllReservations(self):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve all reservations: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity
+				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID, Staff.Forename, Staff.Surname, Locations.ClassCode
 				FROM Reservations
 				JOIN Books ON Reservations.ISBN = Books.ISBN
+				JOIN Staff ON Reservations.UStaID = Staff.UStaID
+				JOIN Locations ON Reservations.ULocID = Locations.ULocID
 			""")
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all reservations")
 			return self.__Curs.fetchall()
@@ -1196,10 +1380,15 @@ class LibraryManager:
 
 	def GetAllReservationsByStaff(self, UStaID):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve reservations for staff member: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			self.__Curs.execute("""
-				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity
+				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID, Staff.Forename, Staff.Surname, Locations.ClassCode
 				FROM Reservations
 				JOIN Books ON Reservations.ISBN = Books.ISBN
+				JOIN Staff ON Reservations.UStaID = Staff.UStaID
+				JOIN Locations ON Reservations.ULocID = Locations.ULocID
 				WHERE Reservations.UStaID = ?
 			""", (UStaID,))
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all reservations made by staff member {UStaID}")
@@ -1210,11 +1399,16 @@ class LibraryManager:
 
 	def GetAllReservationsToday(self):
 		try:
+			if self.__AM.CheckPermission("Teacher") != True:
+				self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve today's reservations: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			Today = int(datetime.now().strftime("%Y%m%d"))
 			self.__Curs.execute("""
-				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity
+				SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID, Staff.Forename, Staff.Surname, Locations.ClassCode
 				FROM Reservations
 				JOIN Books ON Reservations.ISBN = Books.ISBN
+				JOIN Staff ON Reservations.UStaID = Staff.UStaID
+				JOIN Locations ON Reservations.ULocID = Locations.ULocID
 				WHERE Reservations.ReservationDate = ?
 			""", (Today,))
 			self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all reservations for today")

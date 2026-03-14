@@ -373,6 +373,65 @@ class AccountManager:
 			self.Log(f"User {self.__CurrentUser} attempted to demote   staff member {ID} and encountered an error: {e}")
 			return f"System error: {e}"
 
+# --- Updating account details ---
+		def UpdateStaffEmail(self, ID, Email):
+			try:
+				# SysAdmins can update any staff email; staff can update their own
+				if self.__CurrentUser != int(ID) and self.CheckPermission("SysAdmin") != True:
+					self.Log(f"{self.__CurrentUser} attempted to update email for staff {ID}: Insufficient permissions")
+					return "Access Denied: Insufficient Permissions."
+				if not self.CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
+					self.Log(f"{self.__CurrentUser} attempted to update email for staff {ID}: ID does not exist")
+					return "Error: ID does not exist"
+				self.__SysCurs.execute(
+					"UPDATE Staff SET Email = ? WHERE UStaID = ?",
+					(Email, ID)
+				)
+				self.__SysConn.commit()
+				self.Log(f"User {self.__CurrentUser} updated email for staff member {ID}")
+				return "Email updated successfully"
+			except Exception as e:
+				self.Log(f"User {self.__CurrentUser} attempted to update email for staff {ID} and encountered an error: {e}")
+				return f"System error: {e}"
+
+		def UpdateStudentEmail(self, ID, Email):
+			try:
+				if self.CheckPermission("Admin") != True:
+					self.Log(f"{self.__CurrentUser} attempted to update email for student {ID}: Insufficient permissions")
+					return "Access Denied: Insufficient Permissions."
+				if not self.CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
+					self.Log(f"{self.__CurrentUser} attempted to update email for student {ID}: ID does not exist")
+					return "Error: ID does not exist"
+				self.__LibCurs.execute(
+					"UPDATE Students SET Email = ? WHERE UStuID = ?",
+					(Email, ID)
+				)
+				self.__LibConn.commit()
+				self.Log(f"User {self.__CurrentUser} updated email for student {ID}")
+				return "Email updated successfully"
+			except Exception as e:
+				self.Log(f"User {self.__CurrentUser} attempted to update email for student {ID} and encountered an error: {e}")
+				return f"System error: {e}"
+
+		def UpdateSMTPSettings(self, Host, Port, User, Password, Sender):
+			try:
+				if self.CheckPermission("SysAdmin") != True:
+					self.Log(f"{self.__CurrentUser} attempted to update SMTP settings: Insufficient permissions")
+					return "Access Denied: Insufficient Permissions."
+				Settings = [("SMTPHost", Host), ("SMTPPort", str(Port)), ("SMTPUser", User), ("SMTPPassword", Password), ("SMTPSender", Sender)]
+				for Name, Value in Settings:
+					self.__SysCurs.execute(
+						"UPDATE Settings SET SettingValue = ? WHERE SettingName = ?",
+						(Value, Name)
+					)
+				self.__SysConn.commit()
+				self.Log(f"User {self.__CurrentUser} updated SMTP settings")
+				return "SMTP settings updated successfully"
+			except Exception as e:
+				self.Log(f"User {self.__CurrentUser} attempted to update SMTP settings and encountered an error: {e}")
+				return f"System error: {e}"
+
+
 # --- Default settings editing ---
 	def UpdateStudentMaxLoans(self, ID, MaxLoans):
 		try:
@@ -458,7 +517,7 @@ class AccountManager:
 		try:
 			# Selects the entire row with the supplied ID
 			self.__SysCurs.execute(
-				"SELECT * from Staff where UStaID = ?",
+				"SELECT UStaID, PasswordHash, Salt, Forename, Surname, AccessLevel, AccountActive, InactiveDate, Email FROM Staff WHERE UStaID = ?",
 				(InputID,)
 			)
 			row = self.__SysCurs.fetchone()
@@ -694,6 +753,10 @@ class AccountManager:
 # --- Search Methods ---
 	def SearchStaff(self, SearchTerm):
 		try:
+			# Permission check
+			if self.CheckPermission("Teacher") != True:
+				self.Log(f"{self.__CurrentUser} attempted to search staff: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			Term = f"%{SearchTerm}%"
 			Query = """
 				SELECT UStaID, Forename, Surname
@@ -706,8 +769,66 @@ class AccountManager:
 		except Exception as e:
 			return f"Search Error: {e}"
 		
+	def CreateNotification(self, UStaID, NotifBody):
+		try:
+			# Inserts a new undelivered notification for the given staff member
+			UNID = self.GetNextID(self.__SysCurs, "Notifications", "UNID")
+			self.__SysCurs.execute(
+					"INSERT INTO Notifications (UNID, UStaID, NotifBody, Delivered) VALUES (?, ?, ?, ?)",
+				(UNID, UStaID, NotifBody, False)
+			)
+			self.__SysConn.commit()
+			self.Log(f"Notification {UNID} created for staff member {UStaID}")
+			return True
+		except Exception as e:
+				self.Log(f"Error creating notification for staff member {UStaID}: {e}")
+				return f"System error: {e}"
+
+	def DeliverNotifications(self):
+		try:
+			# Fetches all undelivered notifications for the currently logged in user
+			self.__SysCurs.execute(
+				"SELECT UNID, NotifBody FROM Notifications WHERE UStaID = ? AND Delivered = ?",
+				(self.__CurrentUser, False)
+			)
+			Pending = self.__SysCurs.fetchall()
+			if not Pending:
+				return "No pending notifications."
+			# Retrieves the current user's email address
+			self.__SysCurs.execute(
+				"SELECT Email FROM Staff WHERE UStaID = ?",
+				(self.__CurrentUser,)
+			)
+			EmailRow = self.__SysCurs.fetchone()
+			if not EmailRow or not EmailRow[0]:
+				self.Log(f"Notification delivery skipped for user {self.__CurrentUser}: no email address on record")
+				return "No email address on record, notifications not delivered."
+			ToAddress = EmailRow[0]
+			# Sends each notification and marks it as delivered
+			Delivered = 0
+			for UNID, NotifBody in Pending:
+				Result = self.SendEmail(ToAddress, "Library System Notification", NotifBody)
+				if Result == True:
+						self.__SysCurs.execute(
+							"UPDATE Notifications SET Delivered = ? WHERE UNID = ?",
+							(True, UNID)
+						)
+						Delivered += 1
+				else:
+						self.Log(f"Failed to deliver notification {UNID} to {ToAddress}")
+			self.__SysConn.commit()
+			self.Log(f"Delivered {Delivered} of {len(Pending)} notifications to user {self.__CurrentUser}")
+			return f"Delivered {Delivered} of {len(Pending)} notifications."
+		except Exception as e:
+				self.Log(f"Error delivering notifications for user {self.__CurrentUser}: {e}")
+				return f"System error: {e}"
+
 	def SearchStudents(self, SearchTerm):
 		try:
+			# Permission check
+			if self.CheckPermission("Teacher") != True:
+				self.Log(f"{self.__CurrentUser} attempted to search students: Insufficient permissions")
+				return "Access Denied: Insufficient Permissions."
 			Term = f"%{SearchTerm}%"
 			Query = """
 				SELECT UStuID, Forename, Surname
