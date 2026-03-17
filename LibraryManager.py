@@ -338,7 +338,7 @@ class LibraryManager:
             return f"System error: {e}"
 
 # --- Issuing, returning, and deleting loans ---
-    def IssueLoan(self, UCID, UStuID, Override=False):
+    def IssueLoan(self, UCID, UStuID):
         try:
             # Permission check
             if self.__AM.CheckPermission("Teacher") != True:
@@ -348,17 +348,6 @@ class LibraryManager:
                 return "Error: Student ID does not exist."
             if not self.__AM.IsAccountActive(self.__Curs, "Students", "UStuID", UStuID):
                 return "Error: Student account is inactive."
-            # Check student has not reached their active loan limit
-            if not Override:
-                self.__Curs.execute("""
-                    SELECT COUNT(*), MaxActiveLoans
-                    FROM Loans
-                    JOIN Students ON Loans.UStuID = Students.UStuID
-                    WHERE Loans.UStuID = ? AND Loans.ReturnDate IS NULL
-                """, (UStuID,))
-                LimitRow = self.__Curs.fetchone()
-                if LimitRow and LimitRow[0] >= LimitRow[1]:
-                    return "Loan limit reached"
             # Check if copy is available
             self.__Curs.execute("""
                 SELECT Status
@@ -440,6 +429,45 @@ class LibraryManager:
         except Exception as e:
             self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to return a loan and encountered an error: {e}")
             return f"System error: {e}"
+
+    def ExtendLoan(self, ULoanID, NewDueDate):
+        try:
+            # Permission check
+            if self.__AM.CheckPermission("Teacher") != True:
+                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to extend loan {ULoanID}: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            # Check loan exists and is still active
+            self.__Curs.execute("""
+                SELECT UCID, DueDate, ReturnDate, Loans.UStuID
+                FROM Loans
+                JOIN Students ON Loans.UStuID = Students.UStuID
+                WHERE ULoanID = ?
+            """, (ULoanID,))
+            Loan = self.__Curs.fetchone()
+            if not Loan:
+                return "Loan not found."
+            UCID, CurrentDueDate, ReturnDate, UStuID = Loan
+            if ReturnDate is not None:
+                return "Loan has already been returned."
+            if NewDueDate <= CurrentDueDate:
+                return "New due date must be later than the current due date."
+            # Check the extension does not conflict with existing reservations or loans
+            LoanDate = int(datetime.now().strftime("%Y%m%d"))
+            if not self.__LoanStockConflictCheck(UCID, LoanDate, NewDueDate):
+                return "Loan cannot be extended due to stock conflicts with existing reservations."
+            # Update due date
+            self.__Curs.execute("""
+                UPDATE Loans
+                SET DueDate = ?
+                WHERE ULoanID = ?
+            """, (NewDueDate, ULoanID))
+            self.__Conn.commit()
+            self.__AM.Log(f"{self.__AM.GetCurrentUser()} extended loan {ULoanID} to {NewDueDate}")
+            return f"Loan extended to {NewDueDate}."
+        except Exception as e:
+            self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to extend loan {ULoanID} and encountered an error: {e}")
+            return f"System error: {e}"
+
 
     def ClearOldLoans(self):
         try:
@@ -564,7 +592,7 @@ class LibraryManager:
             if not self.__AM.CheckIDExists(self.__Curs, "Copies", "UCID", UCID):
                 self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to update status of copy {UCID}: UCID does not exist")
                 return "Error: Copy does not exist"
-            ValidStatuses = ["Available", "On Loan", "Reserved", "Lost", "Damaged"]
+            ValidStatuses = ["Available", "On Loan", "Reserved"]
             if Status not in ValidStatuses:
                 return f"Error: Invalid status. Must be one of: {', '.join(ValidStatuses)}"
             self.__Curs.execute("""
@@ -885,6 +913,58 @@ class LibraryManager:
             self.__AM.Log(f"User {self.__AM.GetCurrentUser()} encountered an error sending due tomorrow notifications: {e}")
             return f"System error: {e}"
 
+# --- StartUp ---
+    def StartUp(self):
+        try:
+            # Permission check
+            if self.__AM.CheckPermission("Teacher") != True:
+                return "Access Denied: Insufficient Permissions."
+            # Emails students whose loans are due back tomorrow
+            DueTomorrowResult = self.SendDueTomorrowNotifications()
+            self.__AM.Log(f"StartUp: SendDueTomorrowNotifications - {DueTomorrowResult}")
+            # Emails students whose loans are already overdue
+            OverdueResult = self.SendOverdueNotifications()
+            self.__AM.Log(f"StartUp: SendOverdueNotifications - {OverdueResult}")
+            # Finds all reservations for today and emails the respective teacher for each
+            Today = int(datetime.now().strftime("%Y%m%d"))
+            self.__Curs.execute("""
+                SELECT Reservations.URID, Books.Title, Reservations.Quantity, Reservations.UStaID, Staff.Email, Staff.Forename, Staff.Surname
+                FROM Reservations
+                JOIN Books ON Reservations.ISBN = Books.ISBN
+                JOIN Staff ON Reservations.UStaID = Staff.UStaID
+                WHERE Reservations.ReservationDate = ?
+            """, (Today,))
+            TodaysReservations = self.__Curs.fetchall()
+            ReservationsSent = 0
+            for Reservation in TodaysReservations:
+                URID, Title, Quantity, UStaID, Email, Forename, Surname = Reservation
+                if not Email:
+                    self.__AM.Log(f"StartUp: Reservation {URID} notification skipped for staff {UStaID}: no email address on record")
+                    continue
+                # Finds which copies to collect and from where, also updates their CurrentLocationID and Status
+                PickList = self.__FindReservationStock(URID)
+                if isinstance(PickList, str) or PickList is None:
+                    self.__AM.Log(f"StartUp: Could not find stock for reservation {URID}: {PickList}")
+                    continue
+                # Builds email body from picklist
+                Body = f"Dear {Forename} {Surname},\n\nYour reservation for today is ready to collect:\n"
+                Body += f"  Title: {Title}, Quantity: {Quantity}\n\nCopies to collect:\n"
+                for Entry in PickList:
+                    RoomName = Entry[-1]
+                    CopyIDs = Entry[:-1]
+                    Body += f"  Room {RoomName}: copies {', '.join(str(c) for c in CopyIDs)}\n"
+                Result = self.__AM.SendEmail(Email, "Library Reservation Ready", Body)
+                if Result == True:
+                    ReservationsSent += 1
+                else:
+                    self.__AM.Log(f"StartUp: Failed to send reservation notification for {URID} to staff {UStaID}")
+            self.__AM.Log(f"StartUp: Sent {ReservationsSent} of {len(TodaysReservations)} reservation notifications")
+            return f"StartUp complete. Due tomorrow: {DueTomorrowResult}. Overdue: {OverdueResult}. Reservation notifications: {ReservationsSent}/{len(TodaysReservations)}."
+        except Exception as e:
+            self.__AM.Log(f"StartUp encountered an error: {e}")
+            return f"System error: {e}"
+
+
 # --- Internal helper methods ---
     def __MergeSort(self, UnsortedList):
         if len(UnsortedList) <= 1:
@@ -930,7 +1010,7 @@ class LibraryManager:
     def __FindReservationStock(self, URID):
         try:
             self.__Curs.execute("""
-                SELECT ISBN, Quantity
+                SELECT ISBN, Quantity, ULocID
                 FROM Reservations
                 WHERE URID = ?
             """,(URID,))
@@ -939,6 +1019,7 @@ class LibraryManager:
                 return "Reservation not found."  
             BookISBN = Result[0]
             QuantityRemaining = Result[1]
+            ReservationLocID = Result[2]
             self.__Curs.execute("""
                 SELECT UCID, CurrentLocationID
                 FROM Copies
@@ -986,9 +1067,9 @@ class LibraryManager:
             for ReservedUCID in ReservedUCIDs:
                 self.__Curs.execute("""
                     UPDATE Copies
-                    SET Status = 'Reserved'
+                    SET Status = 'Reserved', CurrentLocationID = ?
                     WHERE UCID = ?
-                """, (ReservedUCID,))
+                """, (ReservationLocID, ReservedUCID))
             self.__Conn.commit()
             return PickList
         except Exception as e:
