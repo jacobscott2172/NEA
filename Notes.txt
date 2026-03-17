@@ -12,11 +12,6 @@ Example Teacher account:
 
 
 # TODO:
-# --- LibraryManager ---
-# make sure databasedefinition and both AM and LM match up. i.e no methods in LM query something that doesnt exist. nothing exists in datapasedefinition that's unused
-
-- P.S maybe introduce a standard data retention time in systemconfig? for example 6 months. (to be used in purging old accounts, loans, etc)
-- This would need backfilling, and require another getter method in accountmanager. but improves standardisation
 # --- Report ---
 # Backend objectives
 # Frontend objectives

@@ -144,7 +144,6 @@ CREATE TABLE IF NOT EXISTS Reservations(
               )''')
 conn1.commit()
 
-# Unplanned
 # This stores global config settings, such as the maximum number of loans a default student account can have
 # it auto-inserts default values as they are not specific to the school like room codes or staff names
 # however these values can be changed later

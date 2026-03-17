@@ -338,7 +338,7 @@ class LibraryManager:
             return f"System error: {e}"
 
 # --- Issuing, returning, and deleting loans ---
-    def IssueLoan(self, UCID, UStuID):
+    def IssueLoan(self, UCID, UStuID, Override=False):
         try:
             # Permission check
             if self.__AM.CheckPermission("Teacher") != True:
@@ -348,6 +348,17 @@ class LibraryManager:
                 return "Error: Student ID does not exist."
             if not self.__AM.IsAccountActive(self.__Curs, "Students", "UStuID", UStuID):
                 return "Error: Student account is inactive."
+            # Check student has not reached their active loan limit
+            if not Override:
+                self.__Curs.execute("""
+                    SELECT COUNT(*), MaxActiveLoans
+                    FROM Loans
+                    JOIN Students ON Loans.UStuID = Students.UStuID
+                    WHERE Loans.UStuID = ? AND Loans.ReturnDate IS NULL
+                """, (UStuID,))
+                LimitRow = self.__Curs.fetchone()
+                if LimitRow and LimitRow[0] >= LimitRow[1]:
+                    return "Loan limit reached"
             # Check if copy is available
             self.__Curs.execute("""
                 SELECT Status

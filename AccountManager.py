@@ -230,6 +230,27 @@ class AccountManager:
             self.Log(f"User {self.__CurrentUser} attempted to remove a student and encountered an error: {e}")
             return f"System error: {e}"
 
+        def PurgeStudentsByEntryYear(self, EntryYear):
+            # Permission check
+            if self.CheckPermission("Admin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to purge students by entry year: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            try:
+                # Deletes inactive students from the given entry year with no outstanding loans
+                self.__LibCurs.execute("""
+                    DELETE FROM Students
+                    WHERE EntryYear = ? AND AccountActive = 0
+                    AND UStuID NOT IN (SELECT UStuID FROM Loans WHERE ReturnDate IS NULL)
+                """, (EntryYear,))
+                StudentsDeleted = self.__LibCurs.rowcount
+                self.__LibConn.commit()
+                self.Log(f"User {self.__CurrentUser} purged {StudentsDeleted} inactive students from entry year {EntryYear}")
+                return f"Purged {StudentsDeleted} inactive students from entry year {EntryYear}"
+            except Exception as e:
+                self.Log(f"User {self.__CurrentUser} attempted to purge students by entry year and encountered an error: {e}")
+                return f"System error: {e}"
+
+
 # --- Account editing ---
     def ChangePassword(self, ID, NewPassword):
         try:
