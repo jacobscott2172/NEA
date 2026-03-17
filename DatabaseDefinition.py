@@ -72,7 +72,6 @@ CREATE TABLE IF NOT EXISTS Locations(
 
 # Creates the "Copies" table, including a unique ID
 # This identifies and stores each copy of each book, including copy specific values
-# such as that copy's condition, storage and status
 # The book's current location can be a NULL value, because it will be set as such when the book is loaned out 
 curs1.execute('''
 CREATE TABLE IF NOT EXISTS Copies(
@@ -80,7 +79,6 @@ CREATE TABLE IF NOT EXISTS Copies(
               ISBN INTEGER NOT NULL,
               HomeLocationID INTEGER NOT NULL,
               CurrentLocationID INTEGER,
-              Status TEXT NOT NULL,
               FOREIGN KEY (ISBN) REFERENCES Books(ISBN),
               FOREIGN KEY (HomeLocationID) REFERENCES Locations(ULocID),
               FOREIGN KEY (CurrentLocationID) REFERENCES Locations(ULocID)
@@ -144,6 +142,7 @@ CREATE TABLE IF NOT EXISTS Reservations(
               )''')
 conn1.commit()
 
+# Unplanned
 # This stores global config settings, such as the maximum number of loans a default student account can have
 # it auto-inserts default values as they are not specific to the school like room codes or staff names
 # however these values can be changed later

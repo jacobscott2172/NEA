@@ -249,9 +249,9 @@ class LibraryManager:
                 return "Access Denied: Insufficient Permissions."
             UCID = self.__AM.GetNextID(self.__Curs, "Copies", "UCID")
             self.__Curs.execute("""
-                INSERT INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID, Status)
-                VALUES (?, ?, ?, ?, ?)
-            """,(UCID, ISBN, ULocID, ULocID, "Available"))
+                INSERT INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID)
+                VALUES (?, ?, ?, ?)
+            """,(UCID, ISBN, ULocID, ULocID))
             self.__Conn.commit()
             self.__AM.Log(f"{self.__AM.GetCurrentUser()} added copy {UCID} of book {ISBN}")
             return "Copy added successfully"
@@ -267,9 +267,9 @@ class LibraryManager:
             for n in range(Quantity):
                 UCID = self.__AM.GetNextID(self.__Curs, "Copies", "UCID")
                 self.__Curs.execute("""
-                    INSERT INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID, Status)
-                    VALUES (?, ?, ?, ?, ?)
-                """,(UCID, ISBN, ULocID, ULocID, "Available"))
+                    INSERT INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID)
+                    VALUES (?, ?, ?, ?)
+                """,(UCID, ISBN, ULocID, ULocID))
                 self.__AM.Log(f"{self.__AM.GetCurrentUser()} added copy {UCID} of book {ISBN}")
             self.__Conn.commit()
             return f"{Quantity} copies added successfully"
@@ -348,14 +348,16 @@ class LibraryManager:
                 return "Error: Student ID does not exist."
             if not self.__AM.IsAccountActive(self.__Curs, "Students", "UStuID", UStuID):
                 return "Error: Student account is inactive."
-            # Check if copy is available
+            # Check if copy is available: no active loan and not reserved for today or future
             self.__Curs.execute("""
-                SELECT Status
+                SELECT COUNT(*)
                 FROM Copies
                 WHERE UCID = ?
-            """,(UCID,))
-            Status = self.__Curs.fetchone()
-            if not Status or Status[0] != "Available":
+                AND UCID NOT IN (SELECT UCID FROM Loans WHERE ReturnDate IS NULL)
+                AND UCID NOT IN (SELECT UCID FROM Reservations WHERE ReservationDate >= ?)
+            """,(UCID, LoanDate))
+            CopyCheck = self.__Curs.fetchone()
+            if not CopyCheck or CopyCheck[0] == 0:
                 return "Copy is not available for loan."
             # Get dates
             LoanDate = int(datetime.now().strftime("%Y%m%d"))
@@ -371,7 +373,7 @@ class LibraryManager:
             # Update copy status
             self.__Curs.execute("""
                 UPDATE Copies
-                SET Status = 'On Loan', CurrentLocationID = ?
+                SET CurrentLocationID = ?
                 WHERE UCID = ?
             """,(self.__OnLoanLocation, UCID))
             self.__Conn.commit()
@@ -408,7 +410,7 @@ class LibraryManager:
             # Update copy status
             self.__Curs.execute("""
                 UPDATE Copies
-                SET Status = 'Available', CurrentLocationID = HomeLocationID
+                SET CurrentLocationID = HomeLocationID
                 WHERE UCID = ?
             """,(UCID,))
             # Retrieve book title and student name for confirmation message
@@ -584,29 +586,6 @@ class LibraryManager:
             self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to update book {ISBN} and encountered an error: {e}")
             return f"System error: {e}"
 
-    def UpdateCopyStatus(self, UCID, Status):
-        try:
-            if self.__AM.CheckPermission("Admin") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to update status of copy {UCID}: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
-            if not self.__AM.CheckIDExists(self.__Curs, "Copies", "UCID", UCID):
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to update status of copy {UCID}: UCID does not exist")
-                return "Error: Copy does not exist"
-            ValidStatuses = ["Available", "On Loan", "Reserved"]
-            if Status not in ValidStatuses:
-                return f"Error: Invalid status. Must be one of: {', '.join(ValidStatuses)}"
-            self.__Curs.execute("""
-                UPDATE Copies
-                SET Status = ?
-                WHERE UCID = ?
-            """, (Status, UCID))
-            self.__Conn.commit()
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} updated status of copy {UCID} to {Status}")
-            return f"Copy status updated to {Status}"
-        except Exception as e:
-            self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to update status of copy {UCID} and encountered an error: {e}")
-            return f"System error: {e}"
-
     def UpdateReservation(self, URID, ULocID, ReservationDate, Quantity):
         try:
             # Retrieve the reservation to check ownership
@@ -680,11 +659,11 @@ class LibraryManager:
             if not Result:
                 return "Error: Loan does not exist"
             UCID, ReturnDate = Result
-            # If the loan is still active, reset the copy status before deleting
+            # If the loan is still active, reset the copy location before deleting
             if ReturnDate is None:
                 self.__Curs.execute("""
                     UPDATE Copies
-                    SET Status = 'Available', CurrentLocationID = HomeLocationID
+                    SET CurrentLocationID = HomeLocationID
                     WHERE UCID = ?
                 """, (UCID,))
             self.__Curs.execute("""
@@ -744,7 +723,7 @@ class LibraryManager:
                 return "Access Denied: Insufficient Permissions."
             Term = f"%{SearchTerm}%"
             self.__Curs.execute("""
-                SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
+                SELECT Copies.UCID, Books.Title, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
                 FROM Copies
                 JOIN Books ON Copies.ISBN = Books.ISBN
                 JOIN Locations AS CurrentLoc ON Copies.CurrentLocationID = CurrentLoc.ULocID
@@ -941,7 +920,7 @@ class LibraryManager:
                 if not Email:
                     self.__AM.Log(f"StartUp: Reservation {URID} notification skipped for staff {UStaID}: no email address on record")
                     continue
-                # Finds which copies to collect and from where, also updates their CurrentLocationID and Status
+                # Finds which copies to collect and from where, also updates their CurrentLocationID
                 PickList = self.__FindReservationStock(URID)
                 if isinstance(PickList, str) or PickList is None:
                     self.__AM.Log(f"StartUp: Could not find stock for reservation {URID}: {PickList}")
@@ -1010,7 +989,7 @@ class LibraryManager:
     def __FindReservationStock(self, URID):
         try:
             self.__Curs.execute("""
-                SELECT ISBN, Quantity, ULocID
+                SELECT ISBN, Quantity, ULocID, ReservationDate
                 FROM Reservations
                 WHERE URID = ?
             """,(URID,))
@@ -1020,11 +999,15 @@ class LibraryManager:
             BookISBN = Result[0]
             QuantityRemaining = Result[1]
             ReservationLocID = Result[2]
+            ReservationDate = Result[3]
             self.__Curs.execute("""
                 SELECT UCID, CurrentLocationID
                 FROM Copies
-                WHERE ISBN = ? AND Status = 'Available' AND CurrentLocationID != ?
-            """,(BookISBN, self.__OnLoanLocation))
+                WHERE ISBN = ?
+                AND CurrentLocationID != ?
+                AND UCID NOT IN (SELECT UCID FROM Loans WHERE ReturnDate IS NULL)
+                AND UCID NOT IN (SELECT UCID FROM Reservations WHERE ReservationDate >= ?)
+            """,(BookISBN, self.__OnLoanLocation, ReservationDate))
             RawCopies = self.__Curs.fetchall()
             LocationCounts = []
             CopyIDsByLocation = {}
@@ -1067,7 +1050,7 @@ class LibraryManager:
             for ReservedUCID in ReservedUCIDs:
                 self.__Curs.execute("""
                     UPDATE Copies
-                    SET Status = 'Reserved', CurrentLocationID = ?
+                    SET CurrentLocationID = ?
                     WHERE UCID = ?
                 """, (ReservationLocID, ReservedUCID))
             self.__Conn.commit()
@@ -1088,7 +1071,8 @@ class LibraryManager:
             self.__Curs.execute("""
                 SELECT COUNT(*)
                 FROM Copies
-                WHERE ISBN = ? AND Status IN ('Available', 'Reserved')
+                WHERE ISBN = ?
+                AND UCID NOT IN (SELECT UCID FROM Loans WHERE ReturnDate IS NULL)
             """, (ISBN,))
             StartingStock = self.__Curs.fetchone()[0]
             Timeline = []
@@ -1227,7 +1211,7 @@ class LibraryManager:
                 self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve copy details: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
             self.__Curs.execute("""
-                SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
+                SELECT Copies.UCID, Books.Title, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
                 FROM Copies
                 JOIN Books ON Copies.ISBN = Books.ISBN
                 JOIN Locations AS CurrentLoc ON Copies.CurrentLocationID = CurrentLoc.ULocID
@@ -1350,7 +1334,7 @@ class LibraryManager:
                 self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve all copies: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
             self.__Curs.execute("""
-                SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
+                SELECT Copies.UCID, Books.Title, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
                 FROM Copies
                 JOIN Books ON Copies.ISBN = Books.ISBN
                 JOIN Locations AS CurrentLoc ON Copies.CurrentLocationID = CurrentLoc.ULocID
@@ -1368,7 +1352,7 @@ class LibraryManager:
                 self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve copies for book: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
             self.__Curs.execute("""
-                SELECT Copies.UCID, Books.Title, Copies.Status, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
+                SELECT Copies.UCID, Books.Title, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
                 FROM Copies
                 JOIN Books ON Copies.ISBN = Books.ISBN
                 JOIN Locations AS CurrentLoc ON Copies.CurrentLocationID = CurrentLoc.ULocID
