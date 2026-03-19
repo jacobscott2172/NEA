@@ -13,7 +13,6 @@ Example Teacher account:
 
 # TODO:
 # --- Report ---
-# Make sure the database and permission objectives match the code - not the other way around
 # Backend objectives
 # Frontend objectives
 # --- Main ---

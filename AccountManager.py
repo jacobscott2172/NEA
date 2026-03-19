@@ -31,6 +31,7 @@ class AccountManager:
     
     def __del__(self):
         try:
+            # Closes all database files, and savesthen closes the log file
             self.__SysConn.commit()
             self.__SysConn.close()
             self.__LibConn.commit()
@@ -38,7 +39,10 @@ class AccountManager:
             self.__LogFile.flush()
             self.__LogFile.close()
         except AttributeError:
-            pass
+            # Writes a warning message to the log file, then saves and closes it
+            self.Log(f"Error on system shutdown: Data may be corrupted")
+            self.__LogFile.flush()
+            self.__LogFile.close()
 
 # --- Adding / Removing accounts ---
     def AddStaff(self, Password, Forename, Surname, AccessLevel, Email):
@@ -165,6 +169,7 @@ class AccountManager:
                             EntryYear = int(Data[2])
                             Email = Data[3]
                             self.AddStudent(Forename, Surname, EntryYear, Email)
+                            # Count is incremented last, so any issue with AddStudent isn't counted
                             Count += 1
                         # Error handling: ValueError (i.e entry year is inputted as "Two Thousand and Twenty Five" instead of 2025)
                         except ValueError:
@@ -218,7 +223,7 @@ class AccountManager:
                 "DELETE FROM Staff WHERE AccountActive = 0 AND InactiveDate < ?", 
                 (CutOffDate,)
             )
-            # Coounts deleted accounts
+            # Counts deleted accounts
             StaffDeleted = self.__SysCurs.rowcount
             # Commits, Logs, Returns confirmation
             self.__LibConn.commit()
@@ -243,13 +248,14 @@ class AccountManager:
                 AND UStuID NOT IN (SELECT UStuID FROM Loans WHERE ReturnDate IS NULL)
             """, (EntryYear,))
             StudentsDeleted = self.__LibCurs.rowcount
+            # commits, logs, returns confirmation
             self.__LibConn.commit()
             self.Log(f"User {self.__CurrentUser} purged {StudentsDeleted} inactive students from entry year {EntryYear}")
             return f"Purged {StudentsDeleted} inactive students from entry year {EntryYear}"
+         # Error handling and logging
         except Exception as e:
             self.Log(f"User {self.__CurrentUser} attempted to purge students by entry year and encountered an error: {e}")
             return f"System error: {e}"
-
 
 # --- Account editing ---
     def ChangePassword(self, ID, NewPassword):
@@ -366,7 +372,7 @@ class AccountManager:
             # Self-Demotion Check
             elif int(ID) == self.__CurrentUser:
                 self.Log(f"{self.__CurrentUser} attempted to self-demote")
-                return "Access Denied: you cannot demote yourself."
+                return "Access Denied: you cannot demote yourself. If you would like to be demoted, contact another System Admin or promote your replacement"
             # Finds the current access level given ID
             self.__SysCurs.execute(
                 "SELECT AccessLevel FROM Staff WHERE UStaID = ?",
@@ -395,63 +401,62 @@ class AccountManager:
             return f"System error: {e}"
 
 # --- Updating account details ---
-        def UpdateStaffEmail(self, ID, Email):
-            try:
-                # SysAdmins can update any staff email; staff can update their own
-                if self.__CurrentUser != int(ID) and self.CheckPermission("SysAdmin") != True:
-                    self.Log(f"{self.__CurrentUser} attempted to update email for staff {ID}: Insufficient permissions")
-                    return "Access Denied: Insufficient Permissions."
-                if not self.CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
-                    self.Log(f"{self.__CurrentUser} attempted to update email for staff {ID}: ID does not exist")
-                    return "Error: ID does not exist"
+    def UpdateStaffEmail(self, ID, Email):
+        try:
+            # SysAdmins can update any staff email; staff can update their own
+            if self.__CurrentUser != int(ID) and self.CheckPermission("SysAdmin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to update email for staff {ID}: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            if not self.CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
+                self.Log(f"{self.__CurrentUser} attempted to update email for staff {ID}: ID does not exist")
+                return "Error: ID does not exist"
+            self.__SysCurs.execute(
+                "UPDATE Staff SET Email = ? WHERE UStaID = ?",
+                (Email, ID)
+            )
+            self.__SysConn.commit()
+            self.Log(f"User {self.__CurrentUser} updated email for staff member {ID}")
+            return "Email updated successfully"
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted to update email for staff {ID} and encountered an error: {e}")
+            return f"System error: {e}"
+
+    def UpdateStudentEmail(self, ID, Email):
+        try:
+            if self.CheckPermission("Admin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to update email for student {ID}: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            if not self.CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
+                self.Log(f"{self.__CurrentUser} attempted to update email for student {ID}: ID does not exist")
+                return "Error: ID does not exist"
+            self.__LibCurs.execute(
+                "UPDATE Students SET Email = ? WHERE UStuID = ?",
+                (Email, ID)
+            )
+            self.__LibConn.commit()
+            self.Log(f"User {self.__CurrentUser} updated email for student {ID}")
+            return "Email updated successfully"
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted to update email for student {ID} and encountered an error: {e}")
+            return f"System error: {e}"
+
+    def UpdateSMTPSettings(self, Host, Port, User, Password, Sender):
+        try:
+            if self.CheckPermission("SysAdmin") != True:
+                self.Log(f"{self.__CurrentUser} attempted to update SMTP settings: Insufficient permissions")
+                return "Access Denied: Insufficient Permissions."
+            Settings = [("SMTPHost", Host), ("SMTPPort", str(Port)), ("SMTPUser", User), ("SMTPPassword", Password), ("SMTPSender", Sender)]
+            for Name, Value in Settings:
                 self.__SysCurs.execute(
-                    "UPDATE Staff SET Email = ? WHERE UStaID = ?",
-                    (Email, ID)
+                    "UPDATE Settings SET SettingValue = ? WHERE SettingName = ?",
+                    (Value, Name)
                 )
-                self.__SysConn.commit()
-                self.Log(f"User {self.__CurrentUser} updated email for staff member {ID}")
-                return "Email updated successfully"
-            except Exception as e:
-                self.Log(f"User {self.__CurrentUser} attempted to update email for staff {ID} and encountered an error: {e}")
-                return f"System error: {e}"
-
-        def UpdateStudentEmail(self, ID, Email):
-            try:
-                if self.CheckPermission("Admin") != True:
-                    self.Log(f"{self.__CurrentUser} attempted to update email for student {ID}: Insufficient permissions")
-                    return "Access Denied: Insufficient Permissions."
-                if not self.CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
-                    self.Log(f"{self.__CurrentUser} attempted to update email for student {ID}: ID does not exist")
-                    return "Error: ID does not exist"
-                self.__LibCurs.execute(
-                    "UPDATE Students SET Email = ? WHERE UStuID = ?",
-                    (Email, ID)
-                )
-                self.__LibConn.commit()
-                self.Log(f"User {self.__CurrentUser} updated email for student {ID}")
-                return "Email updated successfully"
-            except Exception as e:
-                self.Log(f"User {self.__CurrentUser} attempted to update email for student {ID} and encountered an error: {e}")
-                return f"System error: {e}"
-
-        def UpdateSMTPSettings(self, Host, Port, User, Password, Sender):
-            try:
-                if self.CheckPermission("SysAdmin") != True:
-                    self.Log(f"{self.__CurrentUser} attempted to update SMTP settings: Insufficient permissions")
-                    return "Access Denied: Insufficient Permissions."
-                Settings = [("SMTPHost", Host), ("SMTPPort", str(Port)), ("SMTPUser", User), ("SMTPPassword", Password), ("SMTPSender", Sender)]
-                for Name, Value in Settings:
-                    self.__SysCurs.execute(
-                        "UPDATE Settings SET SettingValue = ? WHERE SettingName = ?",
-                        (Value, Name)
-                    )
-                self.__SysConn.commit()
-                self.Log(f"User {self.__CurrentUser} updated SMTP settings")
-                return "SMTP settings updated successfully"
-            except Exception as e:
-                self.Log(f"User {self.__CurrentUser} attempted to update SMTP settings and encountered an error: {e}")
-                return f"System error: {e}"
-
+            self.__SysConn.commit()
+            self.Log(f"User {self.__CurrentUser} updated SMTP settings")
+            return "SMTP settings updated successfully"
+        except Exception as e:
+            self.Log(f"User {self.__CurrentUser} attempted to update SMTP settings and encountered an error: {e}")
+            return f"System error: {e}"
 
 # --- Default settings editing ---
     def UpdateStudentMaxLoans(self, ID, MaxLoans):
