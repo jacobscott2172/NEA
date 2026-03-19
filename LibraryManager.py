@@ -7,8 +7,9 @@ class LibraryManager:
     def __init__ (self, AM):
         self.__Conn = sqlite3.connect("Databases/LibraryData.db")
         self.__Curs = self.__Conn.cursor()
+        # Attaches SystemConfig.db so Staff details can be joined in reservation queries
+        self.__Conn.execute("ATTACH DATABASE 'Databases/SystemConfig.db' AS sysconfig")
         self.__AM = AM
-        self.__LogFile = open("Log.txt", "a")
         self.__OnLoanLocation = 1
 
 
@@ -16,8 +17,6 @@ class LibraryManager:
         try:
             self.__Conn.commit()
             self.__Conn.close()
-            self.__LogFile.flush()
-            self.__LogFile.close()
         # Suppresses errors if __init__ failed before attributes were assigned
         except AttributeError:
             pass
@@ -61,7 +60,7 @@ class LibraryManager:
             if self.__AM.CheckPermission("Teacher") != True:
                 self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to remove an author: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
-            # Check if author exists
+            # Typo check
             self.__Curs.execute("""
                 SELECT UAID
                 FROM Authors
@@ -70,7 +69,7 @@ class LibraryManager:
             Author = self.__Curs.fetchone()
             if not Author:
                 return "Author not found."
-            # Remove author
+            # Removes author
             self.__Curs.execute("""
                 DELETE FROM Authors
                 WHERE UAID = ?
@@ -84,7 +83,7 @@ class LibraryManager:
             self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to remove an author and encountered an error: {e}")
             return f"System error: {e}"
 
-# --- Adding / Removing Books and linking authors ---
+# --- Adding / Removing Books and Linking Authors ---
     def AddBook(self, ISBN, Title, Genre, Subject):
         try:
             # Permission check
@@ -154,7 +153,7 @@ class LibraryManager:
             if self.__AM.CheckPermission("Teacher") != True:
                 self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to remove a book: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
-            # Check if book exists
+            # Typo check
             self.__Curs.execute("""
                 SELECT ISBN
                 FROM Books
@@ -163,7 +162,7 @@ class LibraryManager:
             Book = self.__Curs.fetchone()
             if not Book:
                 return "Book not found."
-            # Remove book
+            # Removes book
             self.__Curs.execute("""
                 DELETE FROM Books
                 WHERE ISBN = ?
@@ -243,7 +242,7 @@ class LibraryManager:
             if self.__AM.CheckPermission("Admin") != True:
                 self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to remove a location: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
-            # Check if location exists
+            # Typo check
             self.__Curs.execute("""
                 SELECT ULocID
                 FROM Locations
@@ -252,7 +251,7 @@ class LibraryManager:
             Location = self.__Curs.fetchone()
             if not Location:
                 return "Location not found."
-            # Remove location
+            # Removes location
             self.__Curs.execute("""
                 DELETE FROM Locations
                 WHERE ULocID = ?
@@ -266,7 +265,7 @@ class LibraryManager:
             self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to remove a location and encountered an error: {e}")
             return f"System error: {e}"
 
-# --- Adding / Removing / MovingCopies ---
+# --- Adding / Removing / Moving Copies ---
     def AddCopy(self, ISBN, ULocID):
         try:
             # Permission check
@@ -356,7 +355,7 @@ class LibraryManager:
             # Permission check
             if self.__AM.CheckPermission("Teacher") != True:
                 return "Access Denied: Insufficient Permissions."
-            # Check if copy exists
+            # Typo check
             self.__Curs.execute("""
                 SELECT UCID
                 FROM Copies
@@ -365,7 +364,7 @@ class LibraryManager:
             Copy = self.__Curs.fetchone()
             if not Copy:
                 return "Copy not found."
-            # Remove copy
+            # Removes copy
             self.__Curs.execute("""
                 DELETE FROM Copies
                 WHERE UCID = ?
@@ -391,17 +390,27 @@ class LibraryManager:
             # Inactive account check
             if not self.__AM.IsAccountActive(self.__Curs, "Students", "UStuID", UStuID):
                 return "Error: Student account is inactive."
+            # Loan limit check
+            self.__Curs.execute(
+                "SELECT MaxActiveLoans FROM Students WHERE UStuID = ?", (UStuID,)
+            )
+            MaxLoans = self.__Curs.fetchone()[0]
+            self.__Curs.execute(
+                "SELECT COUNT(*) FROM Loans WHERE UStuID = ? AND ReturnDate IS NULL", (UStuID,)
+            )
+            ActiveLoans = self.__Curs.fetchone()[0]
+            if ActiveLoans >= MaxLoans:
+                return "Loan limit reached."
             # Get dates
             LoanDate = int(datetime.now().strftime("%Y%m%d"))
             DueDate = int((datetime.now() + timedelta(days = self.__AM.GetLoanPeriod())).strftime("%Y%m%d"))
-            # Check if copy is available: no active loan and not reserved for today or future
+            # Check if copy is available: not currently on active loan
             self.__Curs.execute("""
                 SELECT COUNT(*)
                 FROM Copies
                 WHERE UCID = ?
                 AND UCID NOT IN (SELECT UCID FROM Loans WHERE ReturnDate IS NULL)
-                AND UCID NOT IN (SELECT UCID FROM Reservations WHERE ReservationDate >= ?)
-            """,(UCID, LoanDate))
+            """,(UCID,))
             CopyCheck = self.__Curs.fetchone()
             if not CopyCheck or CopyCheck[0] == 0:
                 return "Copy is not available for loan."
@@ -434,7 +443,7 @@ class LibraryManager:
             # Permission check
             if self.__AM.CheckPermission("Teacher") != True:
                 return "Access Denied: Insufficient Permissions."
-            # Check if loan exists and is not already returned
+            # Check if loan exists and is active
             self.__Curs.execute("""
                 SELECT UCID, ReturnDate
                 FROM Loans
@@ -486,7 +495,7 @@ class LibraryManager:
             if self.__AM.CheckPermission("Teacher") != True:
                 self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to extend loan {ULoanID}: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
-            # Check loan exists and is still active
+            # Check if loan exists and is active
             self.__Curs.execute("""
                 SELECT UCID, DueDate, ReturnDate, Loans.UStuID
                 FROM Loans
@@ -700,7 +709,7 @@ class LibraryManager:
             if not IsOwner and not IsAdmin:
                 self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to delete reservation {URID}: Insufficient permissions")
                 return "Access Denied: You can only delete your own reservations."
-            # Deletes reservation
+            # Deletes the reservation
             self.__Curs.execute("""
                 DELETE FROM Reservations
                 WHERE URID = ?
@@ -737,7 +746,7 @@ class LibraryManager:
                     SET CurrentLocationID = HomeLocationID
                     WHERE UCID = ?
                 """, (UCID,))
-            # Deletes loan
+            # Deletes the loan
             self.__Curs.execute("""
                 DELETE FROM Loans
                 WHERE ULoanID = ?
@@ -787,7 +796,7 @@ class LibraryManager:
                 SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID, Staff.Forename, Staff.Surname, Locations.ClassCode
                 FROM Reservations
                 JOIN Books ON Reservations.ISBN = Books.ISBN
-                JOIN Staff ON Reservations.UStaID = Staff.UStaID
+                JOIN sysconfig.Staff AS Staff ON Reservations.UStaID = Staff.UStaID
                 JOIN Locations ON Reservations.ULocID = Locations.ULocID
                 WHERE Books.Title LIKE ? OR CAST(Books.ISBN AS TEXT) LIKE ? OR CAST(Reservations.URID AS TEXT) LIKE ? OR Staff.Forename LIKE ? OR Staff.Surname LIKE ? OR CAST(Reservations.UStaID AS TEXT) LIKE ?
             """, (Term, Term, Term, Term, Term, Term))
@@ -1023,7 +1032,7 @@ class LibraryManager:
                 SELECT Reservations.URID, Books.Title, Reservations.Quantity, Reservations.UStaID, Staff.Email, Staff.Forename, Staff.Surname
                 FROM Reservations
                 JOIN Books ON Reservations.ISBN = Books.ISBN
-                JOIN Staff ON Reservations.UStaID = Staff.UStaID
+                JOIN sysconfig.Staff AS Staff ON Reservations.UStaID = Staff.UStaID
                 WHERE Reservations.ReservationDate = ?
             """, (Today,))
             TodaysReservations = self.__Curs.fetchall()
@@ -1120,15 +1129,14 @@ class LibraryManager:
             QuantityRemaining = Result[1]
             ReservationLocID = Result[2]
             ReservationDate = Result[3]
-            # Finds all available copies: not on loan and not already reserved for this date or later
+            # Finds all available copies: not currently on active loan
             self.__Curs.execute("""
                 SELECT UCID, CurrentLocationID
                 FROM Copies
                 WHERE ISBN = ?
                 AND CurrentLocationID != ?
                 AND UCID NOT IN (SELECT UCID FROM Loans WHERE ReturnDate IS NULL)
-                AND UCID NOT IN (SELECT UCID FROM Reservations WHERE ReservationDate >= ?)
-            """,(BookISBN, self.__OnLoanLocation, ReservationDate))
+            """,(BookISBN, self.__OnLoanLocation))
             RawCopies = self.__Curs.fetchall()
             # Builds a count of copies per location and a dict mapping each location to its copy IDs
             LocationCounts = []
@@ -1179,7 +1187,7 @@ class LibraryManager:
                     SET CurrentLocationID = ?
                     WHERE UCID = ?
                 """, (ReservationLocID, ReservedUCID))
-            # Commits, returns picklist
+            # Commits, Returns picklist
             self.__Conn.commit()
             return PickList
         # Error handling and logging
@@ -1289,7 +1297,7 @@ class LibraryManager:
         # Error handling and logging
         except Exception as e:
             self.__AM.Log(f"Conflict Check Error: {e}")
-            return f"System error: {e}"
+            return False
 
 # --- Getter Methods --- 
     def GetAuthorDetails(self, UAID):
@@ -1431,7 +1439,7 @@ class LibraryManager:
                 SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID, Staff.Forename, Staff.Surname, Locations.ClassCode
                 FROM Reservations
                 JOIN Books ON Reservations.ISBN = Books.ISBN
-                JOIN Staff ON Reservations.UStaID = Staff.UStaID
+                JOIN sysconfig.Staff AS Staff ON Reservations.UStaID = Staff.UStaID
                 JOIN Locations ON Reservations.ULocID = Locations.ULocID
                 WHERE Reservations.URID = ?
             """, (URID,))
@@ -1648,7 +1656,7 @@ class LibraryManager:
                 SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID, Staff.Forename, Staff.Surname, Locations.ClassCode
                 FROM Reservations
                 JOIN Books ON Reservations.ISBN = Books.ISBN
-                JOIN Staff ON Reservations.UStaID = Staff.UStaID
+                JOIN sysconfig.Staff AS Staff ON Reservations.UStaID = Staff.UStaID
                 JOIN Locations ON Reservations.ULocID = Locations.ULocID
             """)
             # Logs and returns as a list of tuples
@@ -1670,7 +1678,7 @@ class LibraryManager:
                 SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID, Staff.Forename, Staff.Surname, Locations.ClassCode
                 FROM Reservations
                 JOIN Books ON Reservations.ISBN = Books.ISBN
-                JOIN Staff ON Reservations.UStaID = Staff.UStaID
+                JOIN sysconfig.Staff AS Staff ON Reservations.UStaID = Staff.UStaID
                 JOIN Locations ON Reservations.ULocID = Locations.ULocID
                 WHERE Reservations.UStaID = ?
             """, (UStaID,))
@@ -1695,7 +1703,7 @@ class LibraryManager:
                 SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID, Staff.Forename, Staff.Surname, Locations.ClassCode
                 FROM Reservations
                 JOIN Books ON Reservations.ISBN = Books.ISBN
-                JOIN Staff ON Reservations.UStaID = Staff.UStaID
+                JOIN sysconfig.Staff AS Staff ON Reservations.UStaID = Staff.UStaID
                 JOIN Locations ON Reservations.ULocID = Locations.ULocID
                 WHERE Reservations.ReservationDate = ?
             """, (Today,))

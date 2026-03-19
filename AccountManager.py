@@ -41,10 +41,7 @@ class AccountManager:
             self.__LogFile.close()
         # Suppresses errors if __init__ failed before attributes were assigned
         except AttributeError:
-            # Writes a warning message to the log file, then saves and closes it
-            self.Log(f"Error on system shutdown: Data may be corrupted")
-            self.__LogFile.flush()
-            self.__LogFile.close()
+            pass
 
 # --- Adding / Removing accounts ---
     def AddStaff(self, Password, Forename, Surname, AccessLevel, Email):
@@ -58,12 +55,12 @@ class AccountManager:
             PasswordHash = hashlib.sha256(Salt.encode() + Password.encode()).hexdigest()
             # Finds next free ID
             ID = self.GetNextID(self.__SysCurs, "Staff", "UStaID")
-            # Inserts Data
+            # Inserts data
             self.__SysCurs.execute(
                 "INSERT INTO Staff (UStaID, PasswordHash, Salt, Forename, Surname, AccessLevel, Email)  VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (ID, PasswordHash, Salt, Forename, Surname, AccessLevel, Email)
             )
-            # Commits, Logs, returns confirmation
+            # Commits, Logs, Returns confirmation
             self.__SysConn.commit()
             self.Log(f"User {self.__CurrentUser} added staff member {ID}")
             return "Staff added successfully"
@@ -91,7 +88,7 @@ class AccountManager:
                 "DELETE FROM Staff WHERE UStaID = (?)",
                 (ID,)
             )
-            # Commits, logs, returns confirmation
+            # Commits, Logs, Returns confirmation
             self.__SysConn.commit()
             self.Log(f"User {self.__CurrentUser} removed staff member {ID}")
             return "Staff removed successfully"
@@ -120,8 +117,8 @@ class AccountManager:
                 (ID, Forename, Surname, MaxLoans, EntryYear, Email)
             )
             # Commits, Logs, Returns confirmation
-            self.Log(f"User {self.__CurrentUser} added student {ID}")
             self.__LibConn.commit()
+            self.Log(f"User {self.__CurrentUser} added student {ID}")
             return "Student added successfully"
         # Error handling and logging
         except Exception as e:
@@ -138,18 +135,24 @@ class AccountManager:
             if not self.CheckIDExists(self.__LibCurs, "Students", "UStuID", ID):
                 self.Log(f"{self.__CurrentUser} attempted to remove a student: Input ID ({ID}) does not exist")
                 return "Error: ID does not exist"
+            # Outstanding loan check
+            self.__LibCurs.execute(
+                "SELECT COUNT(*) FROM Loans WHERE UStuID = ? AND ReturnDate IS NULL", (ID,)
+            )
+            if self.__LibCurs.fetchone()[0] > 0:
+                return "Error: Student has outstanding loans and cannot be removed."
             # Removes student with the given ID
             self.__LibCurs.execute(
                 "DELETE FROM Students WHERE UStuID = (?)",
                 (ID,)
             )
-            # Commits, Logs, returns confirmation
+            # Commits, Logs, Returns confirmation
             self.__LibConn.commit()
             self.Log(f"User {self.__CurrentUser} removed student {ID}")
             return "Student removed successfully"
         # Error handling and logging
         except Exception as e:
-            self.Log(f"User {self.__CurrentUser} attempted to remove a student and encountered an error: {e}")
+            self.Log(f"User {self.__CurrentUser} attempted to purge old accounts and encountered an error: {e}")
             return f"System error: {e}"
 
     def BatchImportStudents(self, FilePath):
@@ -171,10 +174,11 @@ class AccountManager:
                             Forename = Data[0]
                             Surname = Data[1]
                             EntryYear = int(Data[2])
-                            Email = Data[3]
-                            self.AddStudent(Forename, Surname, EntryYear, Email)
-                            # Count is incremented last, so any issue with AddStudent isn't counted
-                            Count += 1
+                            Email = Data[3].strip()
+                            Result = self.AddStudent(Forename, Surname, EntryYear, Email)
+                            # Only increments if AddStudent succeeded
+                            if Result == "Student added successfully":
+                                Count += 1
                         # Error handling: ValueError (i.e entry year is inputted as "Two Thousand and Twenty Five" instead of 2025)
                         except ValueError:
                             self.Log(f"Batch Import: Skipping invalid year data in line: {Line}")
@@ -236,7 +240,7 @@ class AccountManager:
             return f"Purged {StudentsDeleted} students and {StaffDeleted} staff inactive since before {CutOffDate}"
         # Error handling and logging
         except Exception as e:
-            self.Log(f"User {self.__CurrentUser} attempted to remove a student and encountered an error: {e}")
+            self.Log(f"User {self.__CurrentUser} attempted to purge old accounts and encountered an error: {e}")
             return f"System error: {e}"
 
     def PurgeStudentsByEntryYear(self, EntryYear):
@@ -275,7 +279,7 @@ class AccountManager:
             # New salt generation and password hashing
             Salt = uuid.uuid4().hex
             PasswordHash = hashlib.sha256(Salt.encode() + NewPassword.encode()).hexdigest()
-            # Updates, commits, logs, returns confirmation
+            # Updates password hash and salt
             self.__SysCurs.execute(
                 "UPDATE Staff SET PasswordHash = ?, Salt = ? WHERE UStaID = ?",
                 (PasswordHash, Salt, ID)
@@ -296,7 +300,7 @@ class AccountManager:
             IDCol = "UStaID" if IsStaff else "UStuID"
             Conn = self.__SysConn if IsStaff else self.__LibConn
             Curs = self.__SysCurs if IsStaff else self.__LibCurs
-            # Generates strings for Logging
+            # Generates strings for logging
             AccType = "Staff" if IsStaff else "Student"
             StatusStr = "Active" if MakeActive else "Inactive"
             # Generates date of inactivity / removes inactive date if being made active
@@ -314,7 +318,7 @@ class AccountManager:
                 f"UPDATE {Table} SET AccountActive = ?, InactiveDate = ? WHERE {IDCol} = ?",
                 (MakeActive, Date, ID)
             )
-            # Commits, logs, returns confirmation
+            # Commits, Logs, Returns confirmation
             Conn.commit()
             self.Log(f"User {self.__CurrentUser} set {AccType} account {ID} to {StatusStr}")
             return "Activity status changed"
@@ -333,7 +337,7 @@ class AccountManager:
             if not self.CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
                 self.Log(f"{self.__CurrentUser} attempted to promote staff: Input ID ({ID}) does not exist")
                 return "Error: ID does not exist"
-            # Self-Promotion Check
+            # Self-promotion check
             elif int(ID) == self.__CurrentUser:
                 self.Log(f"{self.__CurrentUser} attempted to self-promote")
                 return "Access Denied: you cannot promote yourself."
@@ -355,7 +359,7 @@ class AccountManager:
                 "UPDATE Staff SET Accesslevel = ? WHERE UStaID = ?",
                 (NewLevel, ID)
             )
-            # Commits, Logs, returns confirmation
+            # Commits, Logs, Returns confirmation
             self.__SysConn.commit()
             self.Log(f"User {self.__CurrentUser} promoted user {ID} to {NewLevel}")
             return f"Promoted successfully to {NewLevel}"
@@ -374,7 +378,7 @@ class AccountManager:
             if not self.CheckIDExists(self.__SysCurs, "Staff", "UStaID", ID):
                 self.Log(f"{self.__CurrentUser} attempted to demote staff: Input ID ({ID}) does not exist")
                 return "Error: ID does not exist"
-            # Self-Demotion Check
+            # Self-demotion check
             elif int(ID) == self.__CurrentUser:
                 self.Log(f"{self.__CurrentUser} attempted to self-demote")
                 return "Access Denied: you cannot demote yourself. If you would like to be demoted, contact another System Admin or promote your replacement"
@@ -396,7 +400,7 @@ class AccountManager:
                 "UPDATE Staff SET Accesslevel = ? WHERE UStaID = ?",
                 (NewLevel, ID)
             )
-            # Commits, Logs, returns confirmation
+            # Commits, Logs, Returns confirmation
             self.__SysConn.commit()
             self.Log(f"User {self.__CurrentUser} demoted user {ID} to {NewLevel}")
             return f"Demoted successfully to {NewLevel}"
@@ -498,7 +502,7 @@ class AccountManager:
                 "UPDATE Students SET MaxActiveLoans = ? WHERE UStuID = ?",
                 (MaxLoans, ID)
             )
-            # Commits, Logs, and returns confirmation
+            # Commits, Logs, Returns confirmation
             self.__LibConn.commit()
             self.Log(f"User {self.__CurrentUser} changed maximum loans for student {ID} to {MaxLoans}")
             return f"Max Loans for student {Name[0]} {Name[1]} changed to {MaxLoans}"
@@ -518,7 +522,7 @@ class AccountManager:
                 "UPDATE Settings SET SettingValue = ? WHERE SettingName = ?",
                 (str(MaxLoans), "DefaultMaxLoans")
             )
-            # Commits, Logs, and returns confirmation
+            # Commits, Logs, Returns confirmation
             self.__SysConn.commit()
             self.Log(f"User {self.__CurrentUser} changed maximum loans for default students to {MaxLoans}")
             return f"Changed default max loans to {MaxLoans}"
@@ -538,7 +542,7 @@ class AccountManager:
                 "UPDATE Settings SET SettingValue = ? WHERE SettingName = ?",
                 (str(LoanPeriod), "DefaultLoanPeriod")
             )
-            # Commits, Logs, and returns confirmation
+            # Commits, Logs, Returns confirmation
             self.__SysConn.commit()
             self.Log(f"User {self.__CurrentUser} changed loan period for default students to {LoanPeriod}")
             return f"Changed default loan period to {LoanPeriod}"
@@ -671,7 +675,7 @@ class AccountManager:
             return self.__LibCurs.fetchone()
         # Error handling and logging
         except Exception as e:
-            self.Log(f"User {self.__CurrentUser} attempted to retrieve details of staff member {ID} and encountered an error: {e}")
+            self.Log(f"User {self.__CurrentUser} attempted to retrieve details of student {ID} and encountered an error: {e}")
             return f"System error: {e}"
     
     def GetCurrentUser(self):
@@ -777,7 +781,7 @@ class AccountManager:
         # Isolates the list of tuples from .fetchall into a list of IDs
         existing_ids = [row[0] for row in rows]
         expected_id = 1
-        # counts Up until the expected ID is either the end of the list, or finds a gap in the list
+        # Counts up until the expected ID is either the end of the list, or finds a gap in the list
         for id in existing_ids:
             if id != expected_id:
                 break
