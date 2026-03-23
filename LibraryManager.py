@@ -404,12 +404,15 @@ class LibraryManager:
             # Get dates
             LoanDate = int(datetime.now().strftime("%Y%m%d"))
             DueDate = int((datetime.now() + timedelta(days = self.__AM.GetLoanPeriod())).strftime("%Y%m%d"))
-            # Check if copy is available: not currently on active loan
+            # Check if copy is available: not on active loan and at its home location
+            # CurrentLocationID = HomeLocationID ensures we don't loan a copy that
+            # has already been physically allocated to a reservation by FindReservationStock
             self.__Curs.execute("""
                 SELECT COUNT(*)
                 FROM Copies
                 WHERE UCID = ?
                 AND UCID NOT IN (SELECT UCID FROM Loans WHERE ReturnDate IS NULL)
+                AND CurrentLocationID = HomeLocationID
             """,(UCID,))
             CopyCheck = self.__Curs.fetchone()
             if not CopyCheck or CopyCheck[0] == 0:
@@ -1068,6 +1071,24 @@ class LibraryManager:
 
 
 # --- Internal helper methods ---
+    def __ValidateISBN(self, ISBN):
+        ISBN = str(ISBN)
+        if len(ISBN) != 13:
+            return (False, "Invalid length ISBN. Only 13 digit format accepted")
+        ISBN12 = ISBN[:12]
+        OldCheckDigit = ISBN[-1]
+        Total = 0
+        for i, Digit in enumerate(ISBN12):
+            # Alternating weights: 1, 3, 1, 3...
+            weight = 1 if i % 2 == 0 else 3
+            Total += int(Digit) * weight
+        # Find if the user inputted ISBN matches the calculated check digit
+        CheckDigit = (10 - (Total % 10)) % 10
+        if CheckDigit != int(OldCheckDigit):
+            return (False, "Invalid check digit. Check you inputted the ISBN correctly")
+        else:
+            return (True, "Valid ISBN")
+
     def __MergeSort(self, UnsortedList):
         # Base case: a list of 0 or 1 is already sorted
         if len(UnsortedList) <= 1:
@@ -1096,24 +1117,6 @@ class LibraryManager:
         MergedList.extend(RightSide[RightPointer:])      
         return MergedList
 
-    def __ValidateISBN(self, ISBN):
-        ISBN = str(ISBN)
-        if len(ISBN) != 13:
-            return (False, "Invalid length ISBN. Only 13 digit format accepted")
-        ISBN12 = ISBN[:12]
-        OldCheckDigit = ISBN[-1]
-        Total = 0
-        for i, Digit in enumerate(ISBN12):
-            # Alternating weights: 1, 3, 1, 3...
-            weight = 1 if i % 2 == 0 else 3
-            Total += int(Digit) * weight
-        # Find if the user inputted ISBN matches the calculated check digit
-        CheckDigit = (10 - (Total % 10)) % 10
-        if CheckDigit != int(OldCheckDigit):
-            return (False, "Invalid check digit. Check you inputted the ISBN correctly")
-        else:
-            return (True, "Valid ISBN")
-
     def __FindReservationStock(self, URID):
         try:
             # Retrieves reservation details needed for stock allocation
@@ -1128,15 +1131,16 @@ class LibraryManager:
             BookISBN = Result[0]
             QuantityRemaining = Result[1]
             ReservationLocID = Result[2]
-            ReservationDate = Result[3]
-            # Finds all available copies: not currently on active loan
+            # Finds all available copies: not on active loan and at home location
+            # CurrentLocationID = HomeLocationID prevents allocating copies already
+            # moved by a previous FindReservationStock call earlier in the same StartUp
             self.__Curs.execute("""
                 SELECT UCID, CurrentLocationID
                 FROM Copies
                 WHERE ISBN = ?
-                AND CurrentLocationID != ?
+                AND CurrentLocationID = HomeLocationID
                 AND UCID NOT IN (SELECT UCID FROM Loans WHERE ReturnDate IS NULL)
-            """,(BookISBN, self.__OnLoanLocation))
+            """,(BookISBN,))
             RawCopies = self.__Curs.fetchall()
             # Builds a count of copies per location and a dict mapping each location to its copy IDs
             LocationCounts = []
@@ -1197,15 +1201,21 @@ class LibraryManager:
 
     def __LoanStockConflictCheck(self, UCID, LoanDate, DueDate):
         try:
-            # Gets the ISBN for the copy being checked
+            # The check works at ISBN level, not copy level - all copies of the same book are interchangeable
+            # So we find the ISBN first, then count and track stock across all copies of that book
             self.__Curs.execute("""
                 SELECT ISBN FROM Copies WHERE UCID = ?
             """, (UCID,))
             result = self.__Curs.fetchone()
+            # If the copy doesn't exist, reject immediately
             if not result:
                 return False
             ISBN = result[0]
-            # Starting stock is the number of copies not currently on active loan
+            # Starting stock = number of copies of this book not currently on an active loan
+            # We do not need to track loans being issued during the window - any loan that will be issued
+            # in the future does not exist yet, so it cannot be counted. When it is eventually issued,
+            # it will run this same check at that point. Only already-committed events (active loans
+            # returning, and existing reservations) need to be modelled in the timeline
             self.__Curs.execute("""
                 SELECT COUNT(*)
                 FROM Copies
@@ -1213,10 +1223,14 @@ class LibraryManager:
                 AND UCID NOT IN (SELECT UCID FROM Loans WHERE ReturnDate IS NULL)
             """, (ISBN,))
             StartingStock = self.__Curs.fetchone()[0]
-            # Timeline is a sorted list of [date, stock_change] events within the loan window
+            # The Timeline is a sorted list of [date, delta] pairs representing every day within the
+            # loan window on which the available stock changes, and by how much (+ve = stock increases,
+            # -ve = stock decreases). Binary search keeps it sorted as events are inserted or merged
             Timeline = []
-            # Each active loan due within the window returns a copy on its due date (+1 to stock)
-            # Binary search is used to insert/merge events into the sorted timeline efficiently
+            # Phase 1: loan return events
+            # Each active loan for this book that is due back within the window will return a copy,
+            # increasing available stock by 1 on its due date
+            # Loans issued after today but before DueDate are not included - they do not exist yet
             self.__Curs.execute("""
                 SELECT Loans.DueDate
                 FROM Loans
@@ -1225,13 +1239,15 @@ class LibraryManager:
                 AND Loans.ReturnDate IS NULL AND Loans.DueDate BETWEEN ? AND ?
             """,(ISBN, LoanDate, DueDate))
             for row in self.__Curs.fetchall():
-                ReturnDate = int(row[0]) 
+                ReturnDate = int(row[0])
+                # Binary search: find the position of this date in the sorted Timeline
                 Left = 0
                 Right = len(Timeline) - 1
                 Found = False
                 while Left <= Right:
                     Mid = (Left + Right) // 2
                     if Timeline[Mid][0] == ReturnDate:
+                        # This date already has an event - merge by incrementing the delta
                         Timeline[Mid][1] += 1
                         Found = True
                         break 
@@ -1240,9 +1256,12 @@ class LibraryManager:
                     else:
                         Right = Mid - 1
                 if not Found:
+                    # New date - insert at the position Left now points to, maintaining sort order
                     Timeline.insert(Left, [ReturnDate, 1])
-            # Each reservation within the window reduces stock on its date (-Qty) then restores it the next day (+Qty)
-            # This models a reservation as a one-day stock reduction
+            # Phase 2: reservation events
+            # Each reservation reduces stock by its Quantity on the reservation date, and restores it
+            # the following day. This models a reservation as a one-day commitment - the books are needed
+            # that day only, and are free again afterwards
             self.__Curs.execute("""
                 SELECT ReservationDate, Quantity
                 FROM Reservations
@@ -1251,12 +1270,14 @@ class LibraryManager:
             for row in self.__Curs.fetchall():
                 ResDate = int(row[0])
                 Qty = row[1]
+                # Binary search: insert or merge a stock reduction on the reservation date
                 Left = 0
                 Right = len(Timeline) - 1
                 Found = False
                 while Left <= Right:
                     Mid = (Left + Right) // 2
                     if Timeline[Mid][0] == ResDate:
+                        # Merge: subtract the reserved quantity from any existing event on this date
                         Timeline[Mid][1] -= Qty
                         Found = True
                         break 
@@ -1266,14 +1287,18 @@ class LibraryManager:
                         Right = Mid - 1
                 if not Found:
                     Timeline.insert(Left, [ResDate, -Qty])
+                # timedelta is used here rather than simple integer arithmetic because dates are stored
+                # as integers in YYYYMMDD format - adding 1 would break at month and year boundaries
                 DateObj = datetime.strptime(str(ResDate), "%Y%m%d")
                 NextDay = int((DateObj + timedelta(days=1)).strftime("%Y%m%d"))
+                # Binary search: insert or merge the stock restoration on the day after the reservation
                 Left = 0
                 Right = len(Timeline) - 1
                 Found = False
                 while Left <= Right:
                     Mid = (Left + Right) // 2
                     if Timeline[Mid][0] == NextDay:
+                        # Merge: restore the quantity into any existing event on this date
                         Timeline[Mid][1] += Qty
                         Found = True
                         break 
@@ -1283,22 +1308,25 @@ class LibraryManager:
                         Right = Mid - 1
                 if not Found:
                     Timeline.insert(Left, [NextDay, Qty])
-            # Simulates the running stock balance. Starts at StartingStock - 1 to account for the new loan
+            # Phase 3: simulate the running balance
+            # Subtract 1 from starting stock to account for the new loan being proposed
             RunningBalance = StartingStock - 1
-            # If stock goes negative immediately, there is already a conflict
+            # If already negative, there are no free copies right now - reject immediately
             if RunningBalance < 0:
                 return False
-            # Applies each event in chronological order; returns False if stock goes negative at any point
+            # Apply each event in chronological order. If the balance goes negative at any point,
+            # it means the proposed loan would leave insufficient stock to fulfil a reservation
+            # or accommodate a returning copy's absence - reject
             for Event in Timeline:
                 RunningBalance += Event[1]
                 if RunningBalance < 0:
                     return False
+            # Balance never went negative throughout the entire loan window - safe to issue
             return True
         # Error handling and logging
         except Exception as e:
             self.__AM.Log(f"Conflict Check Error: {e}")
             return False
-
 # --- Getter Methods --- 
     def GetAuthorDetails(self, UAID):
         try:
