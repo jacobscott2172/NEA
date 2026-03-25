@@ -9,7 +9,13 @@ class LibraryManager:
         self.__Curs = self.__Conn.cursor()
         # Attaches SystemConfig.db so Staff details can be joined in reservation queries
         self.__Conn.execute("ATTACH DATABASE 'Databases/SystemConfig.db' AS sysconfig")
+        
+        # TODO: work out whatever is going on with importing / inheriting AccountManager
+        # There's a lot ogf issues with this, for example GetCurrentUser and all other AM methods showing up white i.e accessed improperly
+        # This is probably an easy fix, i just can't be arsed to fix it right now.
         self.__AM = AM
+        
+        # STANDARDISE THIS IN SYSTEMCONFIG!!!
         self.__OnLoanLocation = 1
 
 
