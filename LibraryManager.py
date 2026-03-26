@@ -9,11 +9,14 @@ class LibraryManager:
         self.__Curs = self.__Conn.cursor()
         # Attaches SystemConfig.db so Staff details can be joined in reservation queries
         self.__Conn.execute("ATTACH DATABASE 'Databases/SystemConfig.db' AS sysconfig")
-        
-        # TODO: work out whatever is going on with importing / inheriting AccountManager
-        # There's a lot ogf issues with this, for example GetCurrentUser and all other AM methods showing up white i.e accessed improperly
-        # This is probably an easy fix, i just can't be arsed to fix it right now.
-        self.__AM = AM
+
+        # this is gonna cause a MASSIVE logic error, as no user logs in for the
+        # LM instance of AM, but I need to use AM methods for permission checks and logging in LM methods
+        # so i either have to commot to one instance of AM that is defined in either main() or LM, or find a way to support two by logging in with main AM, and transferring that to LM AM
+        # also probably gonna cause MAJOR issues with double logging
+        #
+        # god. fucking. damnit.
+        self.__AM = AccountManager()
         
         # STANDARDISE THIS IN SYSTEMCONFIG!!!
         self.__OnLoanLocation = 1
