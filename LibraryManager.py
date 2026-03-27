@@ -1,6 +1,6 @@
 import sqlite3
-from AccountManager import AccountManager
 from datetime import datetime, timedelta
+from AccountManager import AccountManager
 class LibraryManager:
 
 
@@ -10,17 +10,10 @@ class LibraryManager:
         # Attaches SystemConfig.db so Staff details can be joined in reservation queries
         self.__Conn.execute("ATTACH DATABASE 'Databases/SystemConfig.db' AS sysconfig")
 
-        # this is gonna cause a MASSIVE logic error, as no user logs in for the
-        # LM instance of AM, but I need to use AM methods for permission checks and logging in LM methods
-        # so i either have to commot to one instance of AM that is defined in either main() or LM, or find a way to support two by logging in with main AM, and transferring that to LM AM
-        # also probably gonna cause MAJOR issues with double logging
-        #
-        # god. fucking. damnit.
+        # --- TODO: FIX THIS BEFORE RUNTIME, THIS IS JUST TO FIX FORMATTING ISSUES ---
+        # --- AT RUNTIME: LINE 15 = ON, LINE 16 = OFF ---
+        # self.__AM = AM
         self.__AM = AccountManager()
-        
-        # STANDARDISE THIS IN SYSTEMCONFIG!!!
-        self.__OnLoanLocation = 1
-
 
     def __del__(self):
         try:
@@ -29,6 +22,11 @@ class LibraryManager:
         # Suppresses errors if __init__ failed before attributes were assigned
         except AttributeError:
             pass
+
+    # Public wrapper for __del__, used when exiting the program.
+    def Exit(self):
+        self.__AM.Exit()
+        self.__del__()
 
 # --- Adding / Removing Authors ---
     def AddAuthor(self, Forename, Middlename, Surname):
@@ -413,6 +411,9 @@ class LibraryManager:
             # Get dates
             LoanDate = int(datetime.now().strftime("%Y%m%d"))
             DueDate = int((datetime.now() + timedelta(days = self.__AM.GetLoanPeriod())).strftime("%Y%m%d"))
+            # Reads OnLoanLocation from settings so changes during a session are reflected immediately
+            self.__Curs.execute("SELECT SettingValue FROM sysconfig.Settings WHERE SettingName = 'OnLoanLocation'")
+            OnLoanLocation = int(self.__Curs.fetchone()[0])
             # Check if copy is available: not on active loan and at its home location
             # CurrentLocationID = HomeLocationID ensures we don't loan a copy that
             # has already been physically allocated to a reservation by FindReservationStock
@@ -440,7 +441,7 @@ class LibraryManager:
                 UPDATE Copies
                 SET CurrentLocationID = ?
                 WHERE UCID = ?
-            """,(self.__OnLoanLocation, UCID))
+            """,(OnLoanLocation, UCID))
             # Commits, Logs, Returns confirmation
             self.__Conn.commit()
             self.__AM.Log(f"{self.__AM.GetCurrentUser()} issued loan {ULoanID} of copy {UCID} to student {UStuID}")

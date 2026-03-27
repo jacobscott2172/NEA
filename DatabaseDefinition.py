@@ -192,4 +192,9 @@ curs2.execute('''
               VALUES ('SMTPSender', '')
               ''')
 
+curs2.execute('''
+              INSERT OR IGNORE INTO Settings (SettingName, SettingValue)
+              VALUES ('OnLoanLocation', '1')
+              ''')
+
 conn2.commit()

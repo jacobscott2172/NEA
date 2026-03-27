@@ -12,11 +12,10 @@ Example Teacher account:
 
 
 # TODO:
-# --- Report ---
-# Backend objectives
-# Frontend objectives
 # --- Main ---
 # Code Frontend (incl comments)
+# --- Report ---
+# Frontend objectives
 # --- All ---
 # Remove unused methods
 # ensure procedures - everything is logged and permission checked at some point between button press and result

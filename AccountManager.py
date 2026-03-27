@@ -42,6 +42,10 @@ class AccountManager:
         # Suppresses errors if __init__ failed before attributes were assigned
         except AttributeError:
             pass
+    
+    # Public wrapper for __del__, used when exiting the program.
+    def Exit(self):
+        self.__del__()
 
 # --- Adding / Removing accounts ---
     def AddStaff(self, Password, Forename, Surname, AccessLevel, Email):
