@@ -8,7 +8,6 @@ class LibraryManager:
         self.__Curs = self.__Conn.cursor()
         # Attaches SystemConfig.db so Staff details can be joined in reservation queries
         self.__Conn.execute("ATTACH DATABASE 'Databases/SystemConfig.db' AS sysconfig")
-
         self.__AM = AM
 
 
@@ -1146,7 +1145,6 @@ class LibraryManager:
                 FROM Copies
                 WHERE ISBN = ?
                 AND CurrentLocationID = HomeLocationID
-                AND UCID NOT IN (SELECT UCID FROM Loans WHERE ReturnDate IS NULL)
             """,(BookISBN,))
             RawCopies = self.__Curs.fetchall()
             # --- PHASE 1 ---
