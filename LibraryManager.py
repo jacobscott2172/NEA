@@ -1,6 +1,5 @@
 import sqlite3
 from datetime import datetime, timedelta
-from AccountManager import AccountManager
 class LibraryManager:
 
 
@@ -10,10 +9,8 @@ class LibraryManager:
         # Attaches SystemConfig.db so Staff details can be joined in reservation queries
         self.__Conn.execute("ATTACH DATABASE 'Databases/SystemConfig.db' AS sysconfig")
 
-        # --- TODO: FIX THIS BEFORE RUNTIME, THIS IS JUST TO FIX FORMATTING ISSUES ---
-        # --- AT RUNTIME: LINE 15 = ON, LINE 16 = OFF ---
-        # self.__AM = AM
-        self.__AM = AccountManager()
+        self.__AM = AM
+
 
     def __del__(self):
         try:
@@ -1152,6 +1149,7 @@ class LibraryManager:
                 AND UCID NOT IN (SELECT UCID FROM Loans WHERE ReturnDate IS NULL)
             """,(BookISBN,))
             RawCopies = self.__Curs.fetchall()
+            # --- PHASE 1 ---
             # Builds a count of copies per location and a dict mapping each location to its copy IDs
             LocationCounts = []
             CopyIDsByLocation = {}
@@ -1169,10 +1167,12 @@ class LibraryManager:
                 if ULocID not in CopyIDsByLocation:
                     CopyIDsByLocation[ULocID] = []
                 CopyIDsByLocation[ULocID].append(RowUCID)
+            # --- PHASE 2 ---
             # Sorts locations descending by copy count, preferring rooms with more copies for easier collection
             SortedLocations = self.__MergeSort(LocationCounts)
             PickList = []
             ReservedUCIDs = []
+            # --- PHASE 3 ---
             # Takes copies from each room starting with the most stocked, until the required quantity is met
             for RoomData in SortedLocations:
                 if QuantityRemaining <= 0:
@@ -1208,6 +1208,26 @@ class LibraryManager:
         except Exception as e:
             self.__AM.Log(f"User {self.__AM.GetCurrentUser()} encountered an error in FindReservationStock: {e}")
             return None
+
+    def __BinarySearchInsertOrMerge(self, Timeline, Date, Delta):
+        # Binary search: finds the position of Date in the sorted Timeline
+        # If the date already exists, merges by adding Delta to its existing value
+        # If not, inserts a new [Date, Delta] entry at the correct position to maintain sort order
+        Left = 0
+        Right = len(Timeline) - 1
+        Found = False
+        while Left <= Right:
+            Mid = (Left + Right) // 2
+            if Timeline[Mid][0] == Date:
+                Timeline[Mid][1] += Delta
+                Found = True
+                break
+            elif Timeline[Mid][0] < Date:
+                Left = Mid + 1
+            else:
+                Right = Mid - 1
+        if not Found:
+            Timeline.insert(Left, [Date, Delta])
 
     def __LoanStockConflictCheck(self, UCID, LoanDate, DueDate):
         try:
@@ -1250,24 +1270,7 @@ class LibraryManager:
             """,(ISBN, LoanDate, DueDate))
             for row in self.__Curs.fetchall():
                 ReturnDate = int(row[0])
-                # Binary search: find the position of this date in the sorted Timeline
-                Left = 0
-                Right = len(Timeline) - 1
-                Found = False
-                while Left <= Right:
-                    Mid = (Left + Right) // 2
-                    if Timeline[Mid][0] == ReturnDate:
-                        # This date already has an event - merge by incrementing the delta
-                        Timeline[Mid][1] += 1
-                        Found = True
-                        break 
-                    elif Timeline[Mid][0] < ReturnDate:
-                        Left = Mid + 1
-                    else:
-                        Right = Mid - 1
-                if not Found:
-                    # New date - insert at the position Left now points to, maintaining sort order
-                    Timeline.insert(Left, [ReturnDate, 1])
+                self.__BinarySearchInsertOrMerge(Timeline, ReturnDate, 1)
             # Phase 2: reservation events
             # Each reservation reduces stock by its Quantity on the reservation date, and restores it
             # the following day. This models a reservation as a one-day commitment - the books are needed
@@ -1280,44 +1283,12 @@ class LibraryManager:
             for row in self.__Curs.fetchall():
                 ResDate = int(row[0])
                 Qty = row[1]
-                # Binary search: insert or merge a stock reduction on the reservation date
-                Left = 0
-                Right = len(Timeline) - 1
-                Found = False
-                while Left <= Right:
-                    Mid = (Left + Right) // 2
-                    if Timeline[Mid][0] == ResDate:
-                        # Merge: subtract the reserved quantity from any existing event on this date
-                        Timeline[Mid][1] -= Qty
-                        Found = True
-                        break 
-                    elif Timeline[Mid][0] < ResDate:
-                        Left = Mid + 1
-                    else:
-                        Right = Mid - 1
-                if not Found:
-                    Timeline.insert(Left, [ResDate, -Qty])
+                self.__BinarySearchInsertOrMerge(Timeline, ResDate, -Qty)
                 # timedelta is used here rather than simple integer arithmetic because dates are stored
                 # as integers in YYYYMMDD format - adding 1 would break at month and year boundaries
                 DateObj = datetime.strptime(str(ResDate), "%Y%m%d")
                 NextDay = int((DateObj + timedelta(days=1)).strftime("%Y%m%d"))
-                # Binary search: insert or merge the stock restoration on the day after the reservation
-                Left = 0
-                Right = len(Timeline) - 1
-                Found = False
-                while Left <= Right:
-                    Mid = (Left + Right) // 2
-                    if Timeline[Mid][0] == NextDay:
-                        # Merge: restore the quantity into any existing event on this date
-                        Timeline[Mid][1] += Qty
-                        Found = True
-                        break 
-                    elif Timeline[Mid][0] < NextDay:
-                        Left = Mid + 1
-                    else:
-                        Right = Mid - 1
-                if not Found:
-                    Timeline.insert(Left, [NextDay, Qty])
+                self.__BinarySearchInsertOrMerge(Timeline, NextDay, Qty)
             # Phase 3: simulate the running balance
             # Subtract 1 from starting stock to account for the new loan being proposed
             RunningBalance = StartingStock - 1

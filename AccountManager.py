@@ -39,6 +39,8 @@ class AccountManager:
             self.__LibConn.close()
             self.__LogFile.flush()
             self.__LogFile.close()
+            self.__CurrentAccessLevel = "None"
+            self.__CurrentUser =  None
         # Suppresses errors if __init__ failed before attributes were assigned
         except AttributeError:
             pass
