@@ -1,0 +1,24 @@
+2026-03-29 16:07:06 - User 1 logged in
+2026-03-29 16:07:06 - 1 retrieved 0 loans due tomorrow
+2026-03-29 16:07:06 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-03-29 16:07:06 - 1 retrieved 0 overdue loans
+2026-03-29 16:07:06 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-03-29 16:07:06 - StartUp: Sent 0 of 0 reservation notifications
+2026-03-29 16:07:06 - 1 retrieved a list of all books
+2026-03-29 16:07:06 - 1 retrieved a list of all authors
+2026-03-29 16:07:06 - 1 retrieved a list of all copies
+2026-03-29 16:07:06 - 1 retrieved a list of all books
+2026-03-29 16:07:07 - 1 retrieved details for book 9780451524935
+2026-03-29 16:07:09 - 1 retrieved details for book 9780141396132
+2026-03-29 16:07:10 - 1 retrieved details for book 9780451524935
+2026-03-29 16:07:11 - 1 retrieved details for book 9780261102217
+2026-03-29 16:07:16 - 1 retrieved a list of all authors
+2026-03-29 16:07:19 - 1 retrieved a list of all copies
+2026-03-29 16:07:21 - 1 retrieved details for copy 1
+2026-03-29 16:07:22 - 1 retrieved details for copy 2
+2026-03-29 16:07:22 - 1 retrieved details for copy 4
+2026-03-29 16:07:23 - 1 retrieved details for copy 5
+2026-03-29 16:07:23 - 1 retrieved details for copy 3
+2026-03-29 16:07:24 - 1 retrieved details for copy 2
+2026-03-29 16:07:25 - 1 retrieved details for copy 1
+2026-03-29 16:07:26 - 1 retrieved a list of all books
