@@ -1307,10 +1307,6 @@ class LibraryManager:
 # --- Getter Methods --- 
     def GetAuthorDetails(self, UAID):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve author details: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
             # Retrieves and returns author details
             self.__Curs.execute("""
                 SELECT UAID, Forename, Middlenames, Surname
@@ -1326,10 +1322,6 @@ class LibraryManager:
 
     def GetBookDetails(self, ISBN):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve book details: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
             # Retrieves book details including all linked authors
             self.__Curs.execute("""
                 SELECT Books.ISBN, Books.Title, Authors.Forename, Authors.Middlenames, Authors.Surname, Books.Genre, Books.Subject
@@ -1347,10 +1339,6 @@ class LibraryManager:
      
     def GetAuthors(self, ISBN):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve authors for book: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
             # Retrieves all authors linked to the given book
             self.__Curs.execute("""
                 SELECT Authors.UAID, Authors.Forename, Authors.Middlenames, Authors.Surname
@@ -1367,10 +1355,6 @@ class LibraryManager:
 
     def GetCopyDetails(self, UCID):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve copy details: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
             # Retrieves copy details including both home and current location names
             self.__Curs.execute("""
                 SELECT Copies.UCID, Books.Title, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
@@ -1389,9 +1373,6 @@ class LibraryManager:
 
     def GetLoanDetails(self, ULoanID):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                return "Access Denied: Insufficient Permissions."
             # Retrieves loan details including book title and student name
             self.__Curs.execute("""
                 SELECT Loans.ULoanID, Books.Title, Loans.LoanDate, Loans.DueDate, Loans.ReturnDate, Loans.UStuID, Loans.UStaID, Copies.UCID, Students.Forename, Students.Surname
@@ -1410,10 +1391,6 @@ class LibraryManager:
 
     def GetLocationDetails(self, ULocID):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve location details: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
             # Retrieves and returns location details
             self.__Curs.execute("""
                 SELECT ULocID, ClassCode
@@ -1429,10 +1406,6 @@ class LibraryManager:
 
     def GetReservationDetails(self, URID):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve reservation details: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
             # Retrieves reservation details including staff name and location
             self.__Curs.execute("""
                 SELECT Reservations.URID, Books.Title, Reservations.ReservationDate, Reservations.Quantity, Reservations.UStaID, Staff.Forename, Staff.Surname, Locations.ClassCode
@@ -1451,10 +1424,6 @@ class LibraryManager:
 
     def GetAllAuthors(self):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve all authors: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
             # Retrieves all authors
             self.__Curs.execute("""
                 SELECT UAID, Forename, Middlenames, Surname
@@ -1469,10 +1438,6 @@ class LibraryManager:
 
     def GetAllBooks(self):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve all books: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
             # Retrieves all books including linked author names
             self.__Curs.execute("""
                 SELECT Books.ISBN, Books.Title, Authors.Forename, Authors.Middlenames, Authors.Surname, Books.Genre, Books.Subject
@@ -1489,10 +1454,6 @@ class LibraryManager:
 
     def GetAllBooksAuthored(self, UAID):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve books for author: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
             # Retrieves all books linked to the given author
             self.__Curs.execute("""
                 SELECT Books.ISBN, Books.Title, Authors.UAID, Authors.Forename, Authors.Middlenames, Authors.Surname
@@ -1510,10 +1471,6 @@ class LibraryManager:
 
     def GetAllCopies(self):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve all copies: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
             # Retrieves all copies including home and current location names
             self.__Curs.execute("""
                 SELECT Copies.UCID, Books.Title, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
@@ -1531,10 +1488,6 @@ class LibraryManager:
 
     def GetAllCopiesByISBN(self, ISBN):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve copies for book: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
             # Retrieves all copies of a specific book including location names
             self.__Curs.execute("""
                 SELECT Copies.UCID, Books.Title, Books.ISBN, CurrentLoc.ClassCode, HomeLoc.ClassCode
@@ -1618,10 +1571,6 @@ class LibraryManager:
 
     def GetAllLocations(self):
         try:
-            # Permission check
-            if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to retrieve all locations: Insufficient permissions")
-                return "Access Denied: Insufficient Permissions."
             # Retrieves all locations
             self.__Curs.execute("""
                 SELECT ULocID, ClassCode
