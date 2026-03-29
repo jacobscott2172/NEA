@@ -198,20 +198,35 @@ curs2.execute('''
               ''')
 
 conn2.commit()
-# Test accounts - password is "password" for all three
-curs2.execute("""
-              INSERT OR IGNORE INTO Staff (UStaID, PasswordHash, Salt, Forename, Surname, AccessLevel, Email)
-              VALUES (1, '166c88fd2ff550a17d1a587ebaeeb2bd3e7dd1e68f919dc3d2b076b7f2abe87f', 'ae0680da10104bb7bab3e508688c0ddd', 'Example', 'Teacher', 'Teacher', 'teacher@example.com')
-              """)
- 
-curs2.execute("""
-              INSERT OR IGNORE INTO Staff (UStaID, PasswordHash, Salt, Forename, Surname, AccessLevel, Email)
-              VALUES (2, '1bd2d70c6aecb2045a982507cca1ac2c2e22110306ac4a6809fa8a484de5a76b', '80bcc3c87677494db59a08243efe04cf', 'Example', 'Admin', 'Admin', 'admin@example.com')
-              """)
- 
-curs2.execute("""
-              INSERT OR IGNORE INTO Staff (UStaID, PasswordHash, Salt, Forename, Surname, AccessLevel, Email)
-              VALUES (3, 'ea0bd76c36f08ef064f6dbf29bb5c25b75cca79a23eab40baf4f6a070e94848e', '83d2bbecc0a140f38ec1e5ed72cec154', 'Example', 'SysAdmin', 'SysAdmin', 'sysadmin@example.com')
-              """)
- 
-conn2.commit()
+# Sample locations
+curs1.execute("INSERT OR IGNORE INTO Locations (ULocID, ClassCode) VALUES (1, 'ON LOAN')")
+curs1.execute("INSERT OR IGNORE INTO Locations (ULocID, ClassCode) VALUES (2, 'LIB01')")
+curs1.execute("INSERT OR IGNORE INTO Locations (ULocID, ClassCode) VALUES (3, 'ENG01')")
+curs1.execute("INSERT OR IGNORE INTO Locations (ULocID, ClassCode) VALUES (4, 'SCI01')")
+
+# Sample authors
+curs1.execute("INSERT OR IGNORE INTO Authors (UAID, Forename, Middlenames, Surname) VALUES (1, 'William', NULL, 'Shakespeare')")
+curs1.execute("INSERT OR IGNORE INTO Authors (UAID, Forename, Middlenames, Surname) VALUES (2, 'George', NULL, 'Orwell')")
+curs1.execute("INSERT OR IGNORE INTO Authors (UAID, Forename, Middlenames, Surname) VALUES (3, 'Mary', NULL, 'Shelley')")
+curs1.execute("INSERT OR IGNORE INTO Authors (UAID, Forename, Middlenames, Surname) VALUES (4, 'John', 'Ronald Reuel', 'Tolkien')")
+
+# Sample books
+curs1.execute("INSERT OR IGNORE INTO Books (ISBN, Title, Genre, Subject) VALUES (9780141396132, 'Macbeth', 'Fiction', 'English Literature')")
+curs1.execute("INSERT OR IGNORE INTO Books (ISBN, Title, Genre, Subject) VALUES (9780451524935, 'Nineteen Eighty-Four', 'Fiction', 'English Literature')")
+curs1.execute("INSERT OR IGNORE INTO Books (ISBN, Title, Genre, Subject) VALUES (9780486282114, 'Frankenstein', 'Fiction', 'English Literature')")
+curs1.execute("INSERT OR IGNORE INTO Books (ISBN, Title, Genre, Subject) VALUES (9780261102217, 'The Lord of the Rings', 'Fiction', 'English Literature')")
+
+# Link books to authors
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780141396132, 1)")
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780451524935, 2)")
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780486282114, 3)")
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780261102217, 4)")
+
+# Sample copies
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (1, 9780141396132, 2, 2)")
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (2, 9780141396132, 2, 2)")
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (3, 9780451524935, 3, 3)")
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (4, 9780486282114, 2, 2)")
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (5, 9780261102217, 4, 4)")
+
+conn1.commit()

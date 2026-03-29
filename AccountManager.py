@@ -690,6 +690,22 @@ class AccountManager:
     def GetCurrentAccessLevel(self):
         return self.__CurrentAccessLevel
 
+    def GetCurrentUserName(self):
+        # Retrieves the current user's name without logging
+        try:
+            self.__SysCurs.execute(
+                "SELECT Forename, Surname FROM Staff WHERE UStaID = ?",
+                (self.__CurrentUser,)
+            )
+            Result = self.__SysCurs.fetchone()
+            if Result:
+                return f"{Result[0]} {Result[1]}"
+            return "Unknown"
+        # Error handling and logging
+        except Exception as e:
+            self.Log(f"Error retrieving current user name: {e}")
+            return "Unknown"
+
     def GetLoanPeriod(self):
         try:
             # Finds and returns the default loan period
