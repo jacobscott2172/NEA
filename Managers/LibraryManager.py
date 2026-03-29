@@ -920,7 +920,6 @@ class LibraryManager:
                 WHERE Loans.ReturnDate IS NULL AND Loans.DueDate < ?
             """, (Today,))
             Results = self.__Curs.fetchall()
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved {len(Results)} overdue loans")
             # Returns results or a not found message
             return Results if Results else "No overdue loans found."
         # Error handling and logging
@@ -945,7 +944,6 @@ class LibraryManager:
                 WHERE Loans.ReturnDate IS NULL AND Loans.DueDate = ?
             """, (Tomorrow,))
             Results = self.__Curs.fetchall()
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved {len(Results)} loans due tomorrow")
             # Returns results or a not found message
             return Results if Results else "No loans due tomorrow."
         # Error handling and logging
@@ -1319,8 +1317,7 @@ class LibraryManager:
                 FROM Authors
                 WHERE UAID = ?
             """, (UAID,))
-            # Logs and returns as a tuple
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved details for author {UAID}")
+            # Returns as a tuple
             return self.__Curs.fetchone()
         # Error handling and logging
         except Exception as e:
@@ -1341,8 +1338,7 @@ class LibraryManager:
                 JOIN Authors ON BooksAuthors.UAID = Authors.UAID
                 WHERE Books.ISBN = ?
             """, (ISBN,))
-            # Logs and returns as a list of tuples (one per author)
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved details for book {ISBN}")
+            # Returns as a list of tuples (one per author)
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1362,8 +1358,7 @@ class LibraryManager:
                 JOIN Authors ON BooksAuthors.UAID = Authors.UAID
                 WHERE BooksAuthors.ISBN = ?
             """, (ISBN,))
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved author details for book {ISBN}")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1385,8 +1380,7 @@ class LibraryManager:
                 JOIN Locations AS HomeLoc ON Copies.HomeLocationID = HomeLoc.ULocID
                 WHERE Copies.UCID = ?
             """, (UCID,))
-            # Logs and returns as a tuple
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved details for copy {UCID}")
+            # Returns as a tuple
             return self.__Curs.fetchone()
         # Error handling and logging
         except Exception as e:
@@ -1407,8 +1401,7 @@ class LibraryManager:
                 JOIN Students ON Loans.UStuID = Students.UStuID
                 WHERE Loans.ULoanID = ?
             """, (ULoanID,))
-            # Logs and returns as a tuple
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved details for loan {ULoanID}")
+            # Returns as a tuple
             return self.__Curs.fetchone()
         # Error handling and logging
         except Exception as e:
@@ -1427,8 +1420,7 @@ class LibraryManager:
                 FROM Locations
                 WHERE ULocID = ?
             """, (ULocID,))
-            # Logs and returns as a tuple
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved details for location {ULocID}")
+            # Returns as a tuple
             return self.__Curs.fetchone()
         # Error handling and logging
         except Exception as e:
@@ -1450,8 +1442,7 @@ class LibraryManager:
                 JOIN Locations ON Reservations.ULocID = Locations.ULocID
                 WHERE Reservations.URID = ?
             """, (URID,))
-            # Logs and returns as a tuple
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved details for reservation {URID}")
+            # Returns as a tuple
             return self.__Curs.fetchone()
         # Error handling and logging
         except Exception as e:
@@ -1469,8 +1460,7 @@ class LibraryManager:
                 SELECT UAID, Forename, Middlenames, Surname
                 FROM Authors
             """)
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all authors")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1490,8 +1480,7 @@ class LibraryManager:
                 JOIN BooksAuthors ON Books.ISBN = BooksAuthors.ISBN
                 JOIN Authors ON BooksAuthors.UAID = Authors.UAID
             """)
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all books")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1512,8 +1501,7 @@ class LibraryManager:
                 JOIN Authors ON BooksAuthors.UAID = Authors.UAID
                 WHERE Authors.UAID = ?
             """, (UAID,))
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved all books for author {UAID}")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1534,8 +1522,7 @@ class LibraryManager:
                 JOIN Locations AS CurrentLoc ON Copies.CurrentLocationID = CurrentLoc.ULocID
                 JOIN Locations AS HomeLoc ON Copies.HomeLocationID = HomeLoc.ULocID
             """)
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all copies")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1557,8 +1544,7 @@ class LibraryManager:
                 JOIN Locations AS HomeLoc ON Copies.HomeLocationID = HomeLoc.ULocID
                 WHERE Books.ISBN = ?
             """, (ISBN,))
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all copies for book {ISBN}")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1579,8 +1565,7 @@ class LibraryManager:
                 JOIN Books ON Copies.ISBN = Books.ISBN
                 JOIN Students ON Loans.UStuID = Students.UStuID
             """)
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all loans")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1602,8 +1587,7 @@ class LibraryManager:
                 JOIN Students ON Loans.UStuID = Students.UStuID
                 WHERE Loans.ReturnDate IS NULL
             """)
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all active loans")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1625,8 +1609,7 @@ class LibraryManager:
                 JOIN Students ON Loans.UStuID = Students.UStuID
                 WHERE Loans.UStuID = ?
             """, (UStuID,))
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all loans for student {UStuID}")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1644,8 +1627,7 @@ class LibraryManager:
                 SELECT ULocID, ClassCode
                 FROM Locations
             """)
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all locations")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1666,8 +1648,7 @@ class LibraryManager:
                 JOIN sysconfig.Staff AS Staff ON Reservations.UStaID = Staff.UStaID
                 JOIN Locations ON Reservations.ULocID = Locations.ULocID
             """)
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all reservations")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1689,8 +1670,7 @@ class LibraryManager:
                 JOIN Locations ON Reservations.ULocID = Locations.ULocID
                 WHERE Reservations.UStaID = ?
             """, (UStaID,))
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all reservations made by staff member {UStaID}")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -1714,8 +1694,7 @@ class LibraryManager:
                 JOIN Locations ON Reservations.ULocID = Locations.ULocID
                 WHERE Reservations.ReservationDate = ?
             """, (Today,))
-            # Logs and returns as a list of tuples
-            self.__AM.Log(f"{self.__AM.GetCurrentUser()} retrieved a list of all reservations for today")
+            # Returns as a list of tuples
             return self.__Curs.fetchall()
         # Error handling and logging
         except Exception as e:

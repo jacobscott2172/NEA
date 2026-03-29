@@ -152,8 +152,17 @@ class BooksTab(tk.Frame):
         for Row in self.__Table.get_children():
             self.__Table.delete(Row)
         if isinstance(Results, list):
+            # Results format: (ISBN, Title, Forename, Middlenames, Surname, Genre, Subject)
+            # Deduplicate by ISBN since multi-author books appear multiple times
+            Seen = set()
             for Row in Results:
-                self.__Table.insert("", "end", values=Row)
+                ISBN = Row[0]
+                if ISBN in Seen:
+                    continue
+                Seen.add(ISBN)
+                MiddleName = f" {Row[3]}" if Row[3] else ""
+                Author = f"{Row[2]}{MiddleName} {Row[4]}"
+                self.__Table.insert("", "end", values=(ISBN, Row[1], Author, Row[5], Row[6]))
         else:
             self.__DetailsText.config(text=Results)
 

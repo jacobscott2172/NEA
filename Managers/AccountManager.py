@@ -615,7 +615,6 @@ class AccountManager:
             # Selects all staff details
             self.__SysCurs.execute("SELECT UStaID, Forename, Surname, AccessLevel, AccountActive, Email FROM Staff")
             # Logs retrieval and returns all staff details as a list of tuples
-            self.Log(f"User {self.__CurrentUser} retrieved all staff details")
             return self.__SysCurs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -631,7 +630,6 @@ class AccountManager:
             # Selects all student details
             self.__LibCurs.execute("SELECT UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear, Email FROM Students")
             # Logs retrieval and returns all student details as a list of tuples
-            self.Log(f"User {self.__CurrentUser} retrieved all student details")
             return self.__LibCurs.fetchall()
         # Error handling and logging
         except Exception as e:
@@ -653,8 +651,7 @@ class AccountManager:
                 "SELECT UStaID, Forename, Surname, AccessLevel, AccountActive, Email FROM Staff WHERE UStaID = ?", 
                 (ID,)
                 )
-            # Logs and returns details as a tuple
-            self.Log(f"User {self.__CurrentUser} retrieved details of staff member {ID}")
+            # Returns as a tuple
             return self.__SysCurs.fetchone()
         # Error handling and logging
         except Exception as e:
@@ -676,8 +673,7 @@ class AccountManager:
                 "SELECT UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear, Email FROM Students WHERE UStuID = ?", 
                 (ID,)
                 )
-            # Logs and returns details as a tuple
-            self.Log(f"User {self.__CurrentUser} retrieved details of student {ID}")
+            # Returns as a tuple
             return self.__LibCurs.fetchone()
         # Error handling and logging
         except Exception as e:
@@ -689,7 +685,7 @@ class AccountManager:
   
     def GetCurrentAccessLevel(self):
         return self.__CurrentAccessLevel
-
+    
     def GetCurrentUserName(self):
         # Retrieves the current user's name without logging
         try:
