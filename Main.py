@@ -122,6 +122,7 @@ class Dashboard(tk.Frame):
     def __HandleLogout(self):
         self.__controller.GetAM().LogOut()
         self.__controller.ShowFrame(LoginFrame)
+        self.__controller.DestroyDashboard()
 
     def OnShow(self):
         # Refresh user info when dashboard is shown after login
@@ -162,18 +163,30 @@ class Main(tk.Tk):
         self.__LM = LibraryManager(self.__AM)
 
         self.__Frames = {}
-        for F in (LoginFrame, Dashboard):
-            Frame = F(self, self)
-            Frame.grid(row=0, column=0, sticky="nsew")
-            self.__Frames[F] = Frame
+        # Only load the LoginFrame at startup to prevent unauthorized API calls
+        Login = LoginFrame(self, self)
+        Login.grid(row=0, column=0, sticky="nsew")
+        self.__Frames[LoginFrame] = Login
 
         self.ShowFrame(LoginFrame)
 
     def ShowFrame(self, FrameClass):
+        # Lazy-load frames: create them only when requested
+        if FrameClass not in self.__Frames:
+            Frame = FrameClass(self, self)
+            Frame.grid(row=0, column=0, sticky="nsew")
+            self.__Frames[FrameClass] = Frame
+            
         Frame = self.__Frames[FrameClass]
         Frame.tkraise()
         if hasattr(Frame, "OnShow"):
             Frame.OnShow()
+
+    def DestroyDashboard(self):
+        # Security measure: Wipe the dashboard from memory on logout
+        if Dashboard in self.__Frames:
+            self.__Frames[Dashboard].destroy()
+            del self.__Frames[Dashboard]
 
     def GetAM(self):
         return self.__AM
