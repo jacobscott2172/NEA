@@ -1,0 +1,73 @@
+2026-03-30 19:03:13 - User 1 logged in
+2026-03-30 19:03:13 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-03-30 19:03:13 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-03-30 19:03:13 - StartUp: Sent 0 of 0 reservation notifications
+2026-03-30 19:03:50 - 1 added author 5
+2026-03-30 19:04:05 - 1 added author 6
+2026-03-30 19:04:06 - 1 added author 7
+2026-03-30 19:04:06 - 1 added author 8
+2026-03-30 19:04:26 - 1 added author 9
+2026-03-30 19:04:26 - 1 added book 9781234567897
+2026-03-30 19:04:26 - User 1 Linked an author (ID: 9) to book (ISBN: 9781234567897)
+2026-03-30 19:04:31 - 1 removed book 9781234567897
+2026-03-30 20:09:41 - User 1 logged in
+2026-03-30 20:09:41 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-03-30 20:09:41 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-03-30 20:09:41 - StartUp: Sent 0 of 0 reservation notifications
+2026-03-30 20:09:44 - 1 removed author 7
+2026-03-30 20:09:46 - 1 removed author 9
+2026-03-30 20:09:49 - 1 removed author 6
+2026-03-30 20:09:52 - 1 removed author 8
+2026-03-30 20:09:55 - 1 removed author 5
+2026-03-30 20:20:21 - None attempted to retrieve all active loans: Insufficient permissions
+2026-03-30 20:20:21 - None attempted to retrieve all loans: Insufficient permissions
+2026-03-30 20:20:21 - None attempted to retrieve all active loans: Insufficient permissions
+2026-03-30 20:20:27 - User 1 logged in
+2026-03-30 20:20:27 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-03-30 20:20:27 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-03-30 20:20:27 - StartUp: Sent 0 of 0 reservation notifications
+2026-03-30 20:22:11 - User 1 logged in
+2026-03-30 20:22:11 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-03-30 20:22:11 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-03-30 20:22:11 - StartUp: Sent 0 of 0 reservation notifications
+2026-03-30 20:23:18 - A user attempted to log in: Invalid Password
+2026-03-30 20:23:28 - User 1 logged in
+2026-03-30 20:23:28 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-03-30 20:23:28 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-03-30 20:23:28 - StartUp: Sent 0 of 0 reservation notifications
+2026-03-30 20:23:55 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:23:57 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:23:57 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:23:57 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:23:58 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:23:58 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:23:58 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:23:59 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:23:59 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:23:59 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:23:59 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:24:00 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:26:09 - User 1 logged in
+2026-03-30 20:26:09 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-03-30 20:26:09 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-03-30 20:26:09 - StartUp: Sent 0 of 0 reservation notifications
+2026-03-30 20:26:30 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:26:31 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:26:31 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:29:28 - User 1 logged in
+2026-03-30 20:29:28 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-03-30 20:29:28 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-03-30 20:29:28 - StartUp: Sent 0 of 0 reservation notifications
+2026-03-30 20:30:42 - User 1 logged in
+2026-03-30 20:30:42 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-03-30 20:30:42 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-03-30 20:30:42 - StartUp: Sent 0 of 0 reservation notifications
+2026-03-30 20:31:57 - User 1 logged in
+2026-03-30 20:31:57 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-03-30 20:31:57 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-03-30 20:31:57 - StartUp: Sent 0 of 0 reservation notifications
+2026-03-30 20:32:10 - 1 attempted to add a student: Insufficient permissions
+2026-03-30 20:59:09 - User 1 logged in
+2026-03-30 20:59:09 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-03-30 20:59:09 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-03-30 20:59:09 - StartUp: Sent 0 of 0 reservation notifications

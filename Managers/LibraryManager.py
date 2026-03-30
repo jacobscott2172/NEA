@@ -125,29 +125,31 @@ class LibraryManager:
         try:
             # Permission check
             if self.__AM.CheckPermission("Teacher") != True:
-                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to add a book with authors: Insufficient permissions")
+                self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to add a book: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
-            # Adds each author from the supplied lists, collecting their UAIDs
+            # Check format
+            ValidResult = self.__ValidateISBN(ISBN)
+            if ValidResult[0] == False:
+                return "Invalid ISBN format."
+            # Check if book already exists to prevent orphaned authors
+            self.__Curs.execute("SELECT ISBN FROM Books WHERE ISBN = ?", (ISBN,))
+            if self.__Curs.fetchone():
+                return f"A book with ISBN {ISBN} already exists in the catalogue."
+            # Add authors
             UAIDList = []
             for x in range(len(ForenameList)):
-                Forename = ForenameList[x]
-                Middlename = MiddlenameList[x]
-                Surname = SurnameList[x]
-                AuthorID = self.AddAuthor(Forename, Middlename, Surname)
+                AuthorID = self.AddAuthor(ForenameList[x], MiddlenameList[x], SurnameList[x])
                 if isinstance(AuthorID, str):
-                    return AuthorID  # Return error message if AddAuthor failed
-                else:
-                    UAIDList.append(AuthorID)
-            # Adds book, then links all authors to it
+                    return AuthorID  
+                UAIDList.append(AuthorID)
+            # Add book & link authors
             BookID = self.AddBook(ISBN, Title, Genre, Subject)
             if isinstance(BookID, str):
-                return BookID  # Return error message if AddBook failed
+                return BookID 
             self.LinkBookAuthors(BookID, UAIDList)
-            # Returns confirmation
             return f"Book {BookID} added successfully with authors."
-        # Error handling and logging
         except Exception as e:
-            self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to add a book and encountered an error: {e}")
+            self.__AM.Log(f"User {self.__AM.GetCurrentUser()} error in StreamlinedAddBook: {e}")
             return f"System error: {e}"
 
     def RemoveBook(self, ISBN):
@@ -780,7 +782,7 @@ class LibraryManager:
             # Wraps search term in wildcards for partial matching
             Term = f"%{SearchTerm}%"
             self.__Curs.execute("""
-                SELECT Books.ISBN, Books.Title, Authors.Surname, Books.Genre, Books.Subject
+                SELECT Books.ISBN, Books.Title, Authors.Forename, Authors.Middlenames, Authors.Surname, Books.Genre, Books.Subject
                 FROM Books
                 JOIN BooksAuthors ON Books.ISBN = BooksAuthors.ISBN
                 JOIN Authors ON BooksAuthors.UAID = Authors.UAID

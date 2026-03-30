@@ -11,8 +11,8 @@ class DashboardFrame(tk.Frame):
         super().__init__(parent, bg="#f0f4f8")
         self.__controller = controller
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=6)
+        self.grid_columnconfigure(0, weight=0, minsize=180)
+        self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
         # --- Sidebar ---
