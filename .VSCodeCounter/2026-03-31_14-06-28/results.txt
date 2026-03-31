@@ -1,0 +1,42 @@
+Date : 2026-03-31 14:06:28
+Directory : c:\Users\iamno\Python\NEA\NEA
+Total : 13 files,  4353 codes, 766 comments, 478 blanks, all 5597 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Python   |         11 |      4,233 |        766 |        478 |      5,477 |
+| Database |          2 |        120 |          0 |          0 |        120 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++-----------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                      | files      | code       | comment    | blank      | total      |
++-----------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                         |         13 |      4,353 |        766 |        478 |      5,597 |
+| . (Files)                                                 |          2 |        205 |         44 |         40 |        289 |
+| Databases                                                 |          2 |        120 |          0 |          0 |        120 |
+| Frames                                                    |          7 |      2,099 |        185 |        325 |      2,609 |
+| Managers                                                  |          2 |      1,929 |        537 |        113 |      2,579 |
++-----------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-----------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                  | language | code       | comment    | blank      | total      |
++-----------------------------------------------------------+----------+------------+------------+------------+------------+
+| c:\Users\iamno\Python\NEA\NEA\DatabaseDefinition.py       | Python   |        173 |         44 |         33 |        250 |
+| c:\Users\iamno\Python\NEA\NEA\Databases\LibraryData.db    | Database |         90 |          0 |          0 |         90 |
+| c:\Users\iamno\Python\NEA\NEA\Databases\SystemConfig.db   | Database |         30 |          0 |          0 |         30 |
+| c:\Users\iamno\Python\NEA\NEA\Frames\CatalogueFrame.py    | Python   |        695 |         42 |        113 |        850 |
+| c:\Users\iamno\Python\NEA\NEA\Frames\DashboardFrame.py    | Python   |         67 |          8 |         13 |         88 |
+| c:\Users\iamno\Python\NEA\NEA\Frames\LoansFrame.py        | Python   |        330 |         33 |         55 |        418 |
+| c:\Users\iamno\Python\NEA\NEA\Frames\LoginFrame.py        | Python   |         30 |          7 |          9 |         46 |
+| c:\Users\iamno\Python\NEA\NEA\Frames\ReservationsFrame.py | Python   |        353 |         29 |         52 |        434 |
+| c:\Users\iamno\Python\NEA\NEA\Frames\StaffFrame.py        | Python   |        275 |         31 |         33 |        339 |
+| c:\Users\iamno\Python\NEA\NEA\Frames\StudentsFrame.py     | Python   |        349 |         35 |         50 |        434 |
+| c:\Users\iamno\Python\NEA\NEA\Main.py                     | Python   |         32 |          0 |          7 |         39 |
+| c:\Users\iamno\Python\NEA\NEA\Managers\AccountManager.py  | Python   |        675 |        206 |         45 |        926 |
+| c:\Users\iamno\Python\NEA\NEA\Managers\LibraryManager.py  | Python   |      1,254 |        331 |         68 |      1,653 |
+| Total                                                     |          |      4,353 |        766 |        478 |      5,597 |
++-----------------------------------------------------------+----------+------------+------------+------------+------------+
