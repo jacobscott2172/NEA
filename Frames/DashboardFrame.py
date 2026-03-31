@@ -5,6 +5,8 @@ from Frames.LoansFrame import LoansFrame
 from Frames.ReservationsFrame import ReservationsFrame
 from Frames.StudentsFrame import StudentsFrame
 from Frames.StaffFrame import StaffFrame
+from Frames.AdminFrame import AdminFrame
+from Frames.SysAdminFrame import SysAdminFrame
 
 class DashboardFrame(tk.Frame):
     def __init__(self, parent, controller):
@@ -20,7 +22,7 @@ class DashboardFrame(tk.Frame):
         Sidebar.grid_propagate(False)
         Sidebar.grid_columnconfigure(0, weight=1)
         Sidebar.grid(row=0, column=0, sticky="nsew")
-        Sidebar.grid_rowconfigure(8, weight=1)
+        Sidebar.grid_rowconfigure(10, weight=1)
 
         # User info at top of sidebar
         self.__NameLabel = tk.Label(Sidebar, text="", font=("Arial", 12, "bold"), bg="#1e293b", fg="white", anchor="w")
@@ -31,13 +33,15 @@ class DashboardFrame(tk.Frame):
         # Separator
         ttk.Separator(Sidebar, orient="horizontal").grid(row=2, column=0, sticky="ew", padx=15, pady=(0, 10))
 
-        # Nav buttons
+        # Nav buttons - Teacher level screens
         NavButtons = [
             ("Catalogue", CatalogueFrame),
             ("Loans", LoansFrame),
             ("Reservations", ReservationsFrame),
             ("Students", StudentsFrame),
             ("Staff", StaffFrame),
+            ("Admin Panel", AdminFrame),
+            ("SysAdmin Panel", SysAdminFrame),
         ]
         for i, (Label, Frame) in enumerate(NavButtons):
             tk.Button(
@@ -55,7 +59,7 @@ class DashboardFrame(tk.Frame):
             activeforeground="#f87171", anchor="w", padx=15, pady=8,
             relief="groove", borderwidth=1,
             command=self.__HandleLogout
-        ).grid(row=9, column=0, sticky="ew", padx=8, pady=(0, 10))
+        ).grid(row=11, column=0, sticky="ew", padx=8, pady=(0, 10))
 
         # --- Content Area ---
         ContentArea = tk.Frame(self, bg="#f0f4f8")
@@ -65,7 +69,7 @@ class DashboardFrame(tk.Frame):
 
         # Stack all content frames in the content area
         self.__ContentFrames = {}
-        for F in (CatalogueFrame, LoansFrame, ReservationsFrame, StudentsFrame, StaffFrame):
+        for F in (CatalogueFrame, LoansFrame, ReservationsFrame, StudentsFrame, StaffFrame, AdminFrame, SysAdminFrame):
             Frame = F(ContentArea, controller)
             Frame.grid(row=0, column=0, sticky="nsew")
             self.__ContentFrames[F] = Frame
