@@ -33,24 +33,28 @@ class DashboardFrame(tk.Frame):
         # Separator
         ttk.Separator(Sidebar, orient="horizontal").grid(row=2, column=0, sticky="ew", padx=15, pady=(0, 10))
 
-        # Nav buttons - Teacher level screens
+        # Nav buttons with minimum access level required for visibility
         NavButtons = [
-            ("Catalogue", CatalogueFrame),
-            ("Loans", LoansFrame),
-            ("Reservations", ReservationsFrame),
-            ("Students", StudentsFrame),
-            ("Staff", StaffFrame),
-            ("Admin Panel", AdminFrame),
-            ("SysAdmin Panel", SysAdminFrame),
+            ("Catalogue", CatalogueFrame, "Teacher"),
+            ("Loans", LoansFrame, "Teacher"),
+            ("Reservations", ReservationsFrame, "Teacher"),
+            ("Students", StudentsFrame, "Teacher"),
+            ("Staff", StaffFrame, "Teacher"),
+            ("Admin Panel", AdminFrame, "Admin"),
+            ("SysAdmin Panel", SysAdminFrame, "SysAdmin"),
         ]
-        for i, (Label, Frame) in enumerate(NavButtons):
-            tk.Button(
+        self.__NavButtons = {}
+        for i, (Label, Frame, MinLevel) in enumerate(NavButtons):
+            Btn = tk.Button(
                 Sidebar, text=Label, font=("Arial", 11),
                 bg="#1e293b", fg="white", bd=0, activebackground="#334155",
                 activeforeground="white", anchor="w", padx=15, pady=8,
                 relief="groove", borderwidth=1,
                 command=lambda F=Frame: self.__ShowContent(F)
-            ).grid(row=i+3, column=0, sticky="ew", padx=8, pady=2)
+            )
+            Btn.grid(row=i+3, column=0, sticky="ew", padx=8, pady=2)
+            # Store button reference, its grid row, and the minimum access level required
+            self.__NavButtons[Label] = (Btn, i+3, MinLevel)
 
         # Logout button pinned to bottom
         tk.Button(
@@ -89,4 +93,21 @@ class DashboardFrame(tk.Frame):
     def OnShow(self):
         # Refresh user info when dashboard is shown after login
         self.__NameLabel.config(text=self.__controller.GetAM().GetCurrentUserName())
-        self.__RoleLabel.config(text=self.__controller.GetAM().GetCurrentAccessLevel())
+        CurrentLevel = self.__controller.GetAM().GetCurrentAccessLevel()
+        self.__RoleLabel.config(text=CurrentLevel)
+
+        # Role hierarchy used to determine which buttons to show
+        RoleHierarchy = {"None": 0, "Teacher": 1, "Admin": 2, "SysAdmin": 3}
+        CurrentValue = RoleHierarchy.get(CurrentLevel, 0)
+
+        # Show or hide nav buttons based on the logged-in user's access level
+        for Label, (Btn, Row, MinLevel) in self.__NavButtons.items():
+            RequiredValue = RoleHierarchy.get(MinLevel, 0)
+            if CurrentValue >= RequiredValue:
+                Btn.grid(row=Row, column=0, sticky="ew", padx=8, pady=2)
+            else:
+                Btn.grid_remove()
+
+        # Reset to Catalogue view on each login to prevent a Teacher seeing
+        # an Admin panel that was left open from a previous higher-level session
+        self.__ShowContent(CatalogueFrame)
