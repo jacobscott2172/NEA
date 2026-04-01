@@ -34,6 +34,10 @@ class LoginFrame(tk.Frame):
         self.__ErrorLabel = tk.Label(Card, text="", fg="red", font=("Arial", 10), bg="white")
         self.__ErrorLabel.grid(row=6, column=0, columnspan=2)
 
+        # Enter key binding for both fields
+        self.__IDEntry.bind("<Return>", lambda event: self.__HandleLogin())
+        self.__PasswordEntry.bind("<Return>", lambda event: self.__HandleLogin())
+
     def __HandleLogin(self):
         from Frames.DashboardFrame import DashboardFrame
         ID = self.__IDEntry.get()
@@ -44,3 +48,9 @@ class LoginFrame(tk.Frame):
             self.__controller.ShowFrame(DashboardFrame)
         else:
             self.__ErrorLabel.config(text=Result)
+
+    def OnShow(self):
+        # Clear fields and error message when returning to login after logout
+        self.__IDEntry.delete(0, "end")
+        self.__PasswordEntry.delete(0, "end")
+        self.__ErrorLabel.config(text="")

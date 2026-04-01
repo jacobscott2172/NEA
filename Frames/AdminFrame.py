@@ -476,6 +476,26 @@ class LibraryAdminTab(tk.Frame):
         self.__DeleteLoanError = tk.Label(LoanFrame, text="", fg="red", font=("Arial", 10), bg="white")
         self.__DeleteLoanError.grid(row=2, column=0, columnspan=3)
 
+        # --- Update Book Details section ---
+        BookFrame = tk.LabelFrame(ContentFrame, text="Update Book Details", font=("Arial", 11, "bold"), bg="white", padx=15, pady=10)
+        BookFrame.pack(fill="x", pady=(0, 15))
+        tk.Label(BookFrame, text="Update the title, genre, or subject of an existing book by ISBN.", font=("Arial", 10), bg="white", justify="left").grid(row=0, column=0, columnspan=5, sticky="w", pady=(0, 8))
+        tk.Label(BookFrame, text="ISBN", font=("Arial", 10), bg="white").grid(row=1, column=0, sticky="e", padx=(10, 4), pady=4)
+        self.__UpdateBookISBN = ttk.Entry(BookFrame, width=15, font=("Arial", 10))
+        self.__UpdateBookISBN.grid(row=1, column=1, padx=(0, 10), pady=4)
+        tk.Label(BookFrame, text="Title", font=("Arial", 10), bg="white").grid(row=2, column=0, sticky="e", padx=(10, 4), pady=4)
+        self.__UpdateBookTitle = ttk.Entry(BookFrame, width=25, font=("Arial", 10))
+        self.__UpdateBookTitle.grid(row=2, column=1, padx=(0, 10), pady=4)
+        tk.Label(BookFrame, text="Genre", font=("Arial", 10), bg="white").grid(row=2, column=2, sticky="e", padx=(10, 4), pady=4)
+        self.__UpdateBookGenre = ttk.Entry(BookFrame, width=15, font=("Arial", 10))
+        self.__UpdateBookGenre.grid(row=2, column=3, padx=(0, 10), pady=4)
+        tk.Label(BookFrame, text="Subject", font=("Arial", 10), bg="white").grid(row=2, column=4, sticky="e", padx=(10, 4), pady=4)
+        self.__UpdateBookSubject = ttk.Entry(BookFrame, width=15, font=("Arial", 10))
+        self.__UpdateBookSubject.grid(row=2, column=5, padx=(0, 10), pady=4)
+        ttk.Button(BookFrame, text="Update", command=self.__UpdateBookDetails).grid(row=3, column=0, padx=10, pady=4)
+        self.__UpdateBookError = tk.Label(BookFrame, text="", fg="red", font=("Arial", 10), bg="white")
+        self.__UpdateBookError.grid(row=3, column=1, columnspan=5, sticky="w")
+
         # --- Clear Old Records section ---
         ClearFrame = tk.LabelFrame(ContentFrame, text="Clear Old Records", font=("Arial", 11, "bold"), bg="white", padx=15, pady=10)
         ClearFrame.pack(fill="x", pady=(0, 15))
@@ -499,6 +519,29 @@ class LibraryAdminTab(tk.Frame):
 
     def OnShow(self):
         pass
+
+    def __UpdateBookDetails(self):
+        ISBNStr = self.__UpdateBookISBN.get().strip()
+        Title = self.__UpdateBookTitle.get().strip()
+        Genre = self.__UpdateBookGenre.get().strip()
+        Subject = self.__UpdateBookSubject.get().strip()
+        if not ISBNStr:
+            self.__UpdateBookError.config(text="ISBN is required.")
+            return
+        try: ISBN = int(ISBNStr)
+        except ValueError:
+            self.__UpdateBookError.config(text="ISBN must be numeric.")
+            return
+        if not Title:
+            self.__UpdateBookError.config(text="Title is required.")
+            return
+        Result = self.__controller.GetLM().UpdateBookDetails(ISBN, Title, Genre, Subject)
+        if "successfully" in str(Result):
+            self.__UpdateBookError.config(text="")
+            for E in (self.__UpdateBookISBN, self.__UpdateBookTitle, self.__UpdateBookGenre, self.__UpdateBookSubject):
+                E.delete(0, "end")
+            messagebox.showinfo("Success", str(Result))
+        else: self.__UpdateBookError.config(text=str(Result))
 
     def __DeleteLoan(self):
         IDStr = self.__DeleteLoanIDEntry.get().strip()

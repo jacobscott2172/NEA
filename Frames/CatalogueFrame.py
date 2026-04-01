@@ -105,7 +105,7 @@ class BooksTab(tk.Frame):
         ActionBar.grid(row=2, column=0, columnspan=2, sticky="ew", pady=10)
         ttk.Button(ActionBar, text="Add Book", command=self.__ShowAddForm).pack(side="left", padx=(0, 8))
         ttk.Button(ActionBar, text="Remove Book", command=self.__RemoveBook).pack(side="left", padx=(0, 8))
-        ttk.Button(ActionBar, text="Update Details", command=self.__ShowUpdateForm).pack(side="left")
+        # Update Book Details is Admin-only and lives in Admin Panel > Library Admin
 
         # --- Inline add form (hidden by default) ---
         self.__AddForm = tk.Frame(self, bg="white", padx=15, pady=15)
@@ -134,31 +134,6 @@ class BooksTab(tk.Frame):
         ttk.Button(self.__AddForm, text="Submit", command=self.__SubmitAdd).grid(row=4, column=0, pady=8)
         ttk.Button(self.__AddForm, text="Cancel", command=self.__HideAddForm).grid(row=4, column=1, pady=8)
 
-        # --- Inline update form (hidden by default) ---
-        self.__UpdateForm = tk.Frame(self, bg="white", padx=15, pady=15)
-        self.__UpdateForm.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-        self.__UpdateForm.grid_remove()
-
-        tk.Label(self.__UpdateForm, text="Update Book Details", font=("Arial", 11, "bold"), bg="white").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 8))
-
-        # ISBN is displayed but not editable as it is the primary key
-        tk.Label(self.__UpdateForm, text="ISBN", font=("Arial", 10), bg="white").grid(row=1, column=0, sticky="e", padx=(10, 4))
-        self.__UpdateISBNLabel = tk.Label(self.__UpdateForm, text="", font=("Arial", 10, "bold"), bg="white")
-        self.__UpdateISBNLabel.grid(row=1, column=1, sticky="w", padx=(0, 10))
-
-        UpdateFields = [("Title", 2), ("Genre", 4), ("Subject", 6)]
-        self.__UpdateEntries = {}
-        for Field, Col in UpdateFields:
-            tk.Label(self.__UpdateForm, text=Field, font=("Arial", 10), bg="white").grid(row=1, column=Col, sticky="e", padx=(10, 4))
-            Entry = ttk.Entry(self.__UpdateForm, width=15, font=("Arial", 10))
-            Entry.grid(row=1, column=Col + 1, padx=(0, 10))
-            self.__UpdateEntries[Field] = Entry
-
-        self.__UpdateFormError = tk.Label(self.__UpdateForm, text="", fg="red", font=("Arial", 10), bg="white")
-        self.__UpdateFormError.grid(row=2, column=0, columnspan=8, pady=(8, 0))
-        ttk.Button(self.__UpdateForm, text="Submit", command=self.__SubmitUpdate).grid(row=3, column=0, pady=8)
-        ttk.Button(self.__UpdateForm, text="Cancel", command=self.__HideUpdateForm).grid(row=3, column=1, pady=8)
-
     def OnShow(self):
         self.__ShowAll()
 
@@ -176,16 +151,18 @@ class BooksTab(tk.Frame):
             self.__Table.delete(Row)
         if isinstance(Results, list):
             # Results format: (ISBN, Title, Forename, Middlenames, Surname, Genre, Subject)
-            # Deduplicate by ISBN since multi-author books appear multiple times
-            Seen = set()
+            # Multi-author books return multiple rows - group by ISBN and join author names
+            BookData = {}
             for Row in Results:
                 ISBN = Row[0]
-                if ISBN in Seen:
-                    continue
-                Seen.add(ISBN)
                 MiddleName = f" {Row[3]}" if Row[3] else ""
-                Author = f"{Row[2]}{MiddleName} {Row[4]}"
-                self.__Table.insert("", "end", values=(ISBN, Row[1], Author, Row[5], Row[6]))
+                AuthorName = f"{Row[2]}{MiddleName} {Row[4]}"
+                if ISBN not in BookData:
+                    BookData[ISBN] = {"Title": Row[1], "Genre": Row[5], "Subject": Row[6], "Authors": []}
+                BookData[ISBN]["Authors"].append(AuthorName)
+            for ISBN, Data in BookData.items():
+                AuthorStr = ", ".join(Data["Authors"])
+                self.__Table.insert("", "end", values=(ISBN, Data["Title"], AuthorStr, Data["Genre"], Data["Subject"]))
         else:
             self.__DetailsText.config(text=Results)
 
@@ -199,13 +176,15 @@ class BooksTab(tk.Frame):
         ISBN = Values[0]
         Details = self.__controller.GetLM().GetBookDetails(ISBN)
         if isinstance(Details, list) and Details:
-            Authors = ", ".join(f"{R[2]} {R[4]}" for R in Details)
+            AuthorNames = []
+            for R in Details:
+                MiddleName = f" {R[3]}" if R[3] else ""
+                AuthorNames.append(f"{R[2]}{MiddleName} {R[4]}")
             D = Details[0]
-            Text = f"ISBN: {D[0]}\nTitle: {D[1]}\nAuthor(s): {Authors}\nGenre: {D[5]}\nSubject: {D[6]}"
+            Text = f"ISBN: {D[0]}\nTitle: {D[1]}\nAuthor(s): {', '.join(AuthorNames)}\nGenre: {D[5]}\nSubject: {D[6]}"
             self.__DetailsText.config(text=Text)
 
     def __ShowAddForm(self):
-        self.__HideUpdateForm()
         self.__AddForm.grid()
 
     def __HideAddForm(self):
@@ -244,41 +223,6 @@ class BooksTab(tk.Frame):
                 self.__DetailsText.config(text="Select a book to view details.")
             else:
                 messagebox.showerror("Error", Result)
-
-    def __ShowUpdateForm(self):
-        # Pre-fills the update form with the currently selected book's details
-        Selected = self.__Table.focus()
-        if not Selected:
-            messagebox.showinfo("Info", "Select a book to update.")
-            return
-        Values = self.__Table.item(Selected, "values")
-        self.__HideAddForm()
-        # Values = (ISBN, Title, Author, Genre, Subject)
-        self.__UpdateISBNLabel.config(text=str(Values[0]))
-        self.__UpdateEntries["Title"].delete(0, "end")
-        self.__UpdateEntries["Title"].insert(0, Values[1])
-        self.__UpdateEntries["Genre"].delete(0, "end")
-        self.__UpdateEntries["Genre"].insert(0, Values[3] if Values[3] else "")
-        self.__UpdateEntries["Subject"].delete(0, "end")
-        self.__UpdateEntries["Subject"].insert(0, Values[4] if Values[4] else "")
-        self.__UpdateForm.grid()
-
-    def __HideUpdateForm(self):
-        self.__UpdateForm.grid_remove()
-        self.__UpdateFormError.config(text="")
-
-    def __SubmitUpdate(self):
-        ISBN = self.__UpdateISBNLabel.cget("text")
-        Title = self.__UpdateEntries["Title"].get()
-        Genre = self.__UpdateEntries["Genre"].get()
-        Subject = self.__UpdateEntries["Subject"].get()
-        # UpdateBookDetails requires Admin permission
-        Result = self.__controller.GetLM().UpdateBookDetails(int(ISBN), Title, Genre, Subject)
-        if "successfully" in str(Result):
-            self.__HideUpdateForm()
-            self.__ShowAll()
-        else:
-            self.__UpdateFormError.config(text=str(Result))
 
 
 class AuthorsTab(tk.Frame):
@@ -764,25 +708,7 @@ class LocationsTab(tk.Frame):
         self.__DetailsText = tk.Label(self.__DetailsPanel, text="Select a location to view details.", font=("Arial", 10), bg="white", justify="left", wraplength=220)
         self.__DetailsText.pack(anchor="w")
 
-        # --- Action buttons (Add/Remove locations require Admin) ---
-        ActionBar = tk.Frame(self, bg="#f0f4f8")
-        ActionBar.grid(row=2, column=0, columnspan=2, sticky="ew", pady=10)
-        ttk.Button(ActionBar, text="Add Location", command=self.__ShowAddForm).pack(side="left", padx=(0, 8))
-        ttk.Button(ActionBar, text="Remove Location", command=self.__RemoveLocation).pack(side="left")
-
-        # --- Inline add form ---
-        self.__AddForm = tk.Frame(self, bg="white", padx=15, pady=15)
-        self.__AddForm.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(0, 10))
-        self.__AddForm.grid_remove()
-
-        tk.Label(self.__AddForm, text="Add Location", font=("Arial", 11, "bold"), bg="white").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
-        tk.Label(self.__AddForm, text="Class Code", font=("Arial", 10), bg="white").grid(row=1, column=0, sticky="e", padx=(10, 4))
-        self.__AddClassCode = ttk.Entry(self.__AddForm, width=20, font=("Arial", 10))
-        self.__AddClassCode.grid(row=1, column=1, padx=(0, 10))
-        self.__AddFormError = tk.Label(self.__AddForm, text="", fg="red", font=("Arial", 10), bg="white")
-        self.__AddFormError.grid(row=2, column=0, columnspan=2, pady=(8, 0))
-        ttk.Button(self.__AddForm, text="Submit", command=self.__SubmitAdd).grid(row=3, column=0, pady=8)
-        ttk.Button(self.__AddForm, text="Cancel", command=self.__HideAddForm).grid(row=3, column=1, pady=8)
+        # No action buttons - Add/Remove Location is in Admin Panel > Library Admin
 
     def OnShow(self):
         self.__ShowAll()
@@ -812,39 +738,3 @@ class LocationsTab(tk.Frame):
             return
         Text = f"Location ID: {Values[0]}\nClass Code: {Values[1]}"
         self.__DetailsText.config(text=Text)
-
-    def __ShowAddForm(self):
-        self.__AddForm.grid()
-
-    def __HideAddForm(self):
-        self.__AddForm.grid_remove()
-        self.__AddFormError.config(text="")
-        self.__AddClassCode.delete(0, "end")
-
-    def __SubmitAdd(self):
-        ClassCode = self.__AddClassCode.get().strip()
-        if not ClassCode:
-            self.__AddFormError.config(text="Class code cannot be empty.")
-            return
-        # AddLocation requires Admin permission
-        Result = self.__controller.GetLM().AddLocation(ClassCode)
-        if "successfully" in str(Result):
-            self.__HideAddForm()
-            self.__ShowAll()
-        else:
-            self.__AddFormError.config(text=str(Result))
-
-    def __RemoveLocation(self):
-        Selected = self.__Table.focus()
-        if not Selected:
-            return
-        Values = self.__Table.item(Selected, "values")
-        ULocID = Values[0]
-        if messagebox.askyesno("Confirm", f"Remove location {Values[1]} (ID {ULocID})?"):
-            # RemoveLocation requires Admin permission
-            Result = self.__controller.GetLM().RemoveLocation(int(ULocID))
-            if "successfully" in str(Result):
-                self.__ShowAll()
-                self.__DetailsText.config(text="Select a location to view details.")
-            else:
-                messagebox.showerror("Error", str(Result))

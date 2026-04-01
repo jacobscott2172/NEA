@@ -142,7 +142,6 @@ CREATE TABLE IF NOT EXISTS Reservations(
               )''')
 conn1.commit()
 
-# Unplanned
 # This stores global config settings, such as the maximum number of loans a default student account can have
 # it auto-inserts default values as they are not specific to the school like room codes or staff names
 # however these values can be changed later
@@ -198,40 +197,99 @@ curs2.execute('''
               ''')
 
 conn2.commit()
-# Sample locations
+
+# ===== SAMPLE DATA =====
+
+# --- Locations ---
 curs1.execute("INSERT OR IGNORE INTO Locations (ULocID, ClassCode) VALUES (1, 'ON LOAN')")
 curs1.execute("INSERT OR IGNORE INTO Locations (ULocID, ClassCode) VALUES (2, 'LIB01')")
 curs1.execute("INSERT OR IGNORE INTO Locations (ULocID, ClassCode) VALUES (3, 'ENG01')")
 curs1.execute("INSERT OR IGNORE INTO Locations (ULocID, ClassCode) VALUES (4, 'SCI01')")
+curs1.execute("INSERT OR IGNORE INTO Locations (ULocID, ClassCode) VALUES (5, 'HIS01')")
+curs1.execute("INSERT OR IGNORE INTO Locations (ULocID, ClassCode) VALUES (6, 'MAT01')")
 
-# Sample authors
+# --- Authors ---
+# Authors 1-4: single-book authors
 curs1.execute("INSERT OR IGNORE INTO Authors (UAID, Forename, Middlenames, Surname) VALUES (1, 'William', NULL, 'Shakespeare')")
 curs1.execute("INSERT OR IGNORE INTO Authors (UAID, Forename, Middlenames, Surname) VALUES (2, 'George', NULL, 'Orwell')")
 curs1.execute("INSERT OR IGNORE INTO Authors (UAID, Forename, Middlenames, Surname) VALUES (3, 'Mary', NULL, 'Shelley')")
 curs1.execute("INSERT OR IGNORE INTO Authors (UAID, Forename, Middlenames, Surname) VALUES (4, 'John', 'Ronald Reuel', 'Tolkien')")
+# Authors 5-6: multi-book authors who also co-author Good Omens together
+curs1.execute("INSERT OR IGNORE INTO Authors (UAID, Forename, Middlenames, Surname) VALUES (5, 'Terry', NULL, 'Pratchett')")
+curs1.execute("INSERT OR IGNORE INTO Authors (UAID, Forename, Middlenames, Surname) VALUES (6, 'Neil', NULL, 'Gaiman')")
 
-# Sample books
+# --- Books ---
+# Original books (single author each)
 curs1.execute("INSERT OR IGNORE INTO Books (ISBN, Title, Genre, Subject) VALUES (9780141396132, 'Macbeth', 'Fiction', 'English Literature')")
 curs1.execute("INSERT OR IGNORE INTO Books (ISBN, Title, Genre, Subject) VALUES (9780451524935, 'Nineteen Eighty-Four', 'Fiction', 'English Literature')")
 curs1.execute("INSERT OR IGNORE INTO Books (ISBN, Title, Genre, Subject) VALUES (9780486282114, 'Frankenstein', 'Fiction', 'English Literature')")
 curs1.execute("INSERT OR IGNORE INTO Books (ISBN, Title, Genre, Subject) VALUES (9780261102217, 'The Lord of the Rings', 'Fiction', 'English Literature')")
+# Multi-author book: Good Omens by Pratchett AND Gaiman
+curs1.execute("INSERT OR IGNORE INTO Books (ISBN, Title, Genre, Subject) VALUES (9780060853983, 'Good Omens', 'Fiction', 'English Literature')")
+# Additional Pratchett book (demonstrates author with multiple books)
+curs1.execute("INSERT OR IGNORE INTO Books (ISBN, Title, Genre, Subject) VALUES (9780552166591, 'The Colour of Magic', 'Fiction', 'English Literature')")
+# Additional Gaiman book (demonstrates author with multiple books)
+curs1.execute("INSERT OR IGNORE INTO Books (ISBN, Title, Genre, Subject) VALUES (9780063081918, 'American Gods', 'Fiction', 'English Literature')")
+# Additional Gaiman book
+curs1.execute("INSERT OR IGNORE INTO Books (ISBN, Title, Genre, Subject) VALUES (9780380807345, 'Coraline', 'Fiction', 'English Literature')")
 
-# Link books to authors
-curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780141396132, 1)")
-curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780451524935, 2)")
-curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780486282114, 3)")
-curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780261102217, 4)")
+# --- BooksAuthors links ---
+# Single-author links
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780141396132, 1)")  # Macbeth - Shakespeare
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780451524935, 2)")  # 1984 - Orwell
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780486282114, 3)")  # Frankenstein - Shelley
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780261102217, 4)")  # LOTR - Tolkien
+# Multi-author link: Good Omens has TWO authors
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780060853983, 5)")  # Good Omens - Pratchett
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780060853983, 6)")  # Good Omens - Gaiman
+# Pratchett's other book
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780552166591, 5)")  # Colour of Magic - Pratchett
+# Gaiman's other books
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780063081918, 6)")  # American Gods - Gaiman
+curs1.execute("INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID) VALUES (9780380807345, 6)")  # Coraline - Gaiman
 
-# Sample copies
+# --- Copies ---
+# Macbeth: 3 copies in LIB01 and ENG01
 curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (1, 9780141396132, 2, 2)")
 curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (2, 9780141396132, 2, 2)")
-curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (3, 9780451524935, 3, 3)")
-curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (4, 9780486282114, 2, 2)")
-curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (5, 9780261102217, 4, 4)")
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (3, 9780141396132, 3, 3)")
+# 1984: 2 copies
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (4, 9780451524935, 3, 3)")
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (5, 9780451524935, 2, 2)")
+# Frankenstein: 2 copies
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (6, 9780486282114, 2, 2)")
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (7, 9780486282114, 3, 3)")
+# LOTR: 1 copy
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (8, 9780261102217, 4, 4)")
+# Good Omens: 3 copies across different rooms
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (9, 9780060853983, 2, 2)")
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (10, 9780060853983, 2, 2)")
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (11, 9780060853983, 3, 3)")
+# Colour of Magic: 2 copies
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (12, 9780552166591, 2, 2)")
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (13, 9780552166591, 5, 5)")
+# American Gods: 1 copy
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (14, 9780063081918, 2, 2)")
+# Coraline: 2 copies
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (15, 9780380807345, 2, 2)")
+curs1.execute("INSERT OR IGNORE INTO Copies (UCID, ISBN, HomeLocationID, CurrentLocationID) VALUES (16, 9780380807345, 3, 3)")
 
 conn1.commit()
 
-# Test accounts - password is "password" for all three
+# --- Students ---
+curs1.execute("INSERT OR IGNORE INTO Students (UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear, Email) VALUES (1, 'Alice', 'Johnson', 3, TRUE, 2022, 'alice.johnson@school.example.com')")
+curs1.execute("INSERT OR IGNORE INTO Students (UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear, Email) VALUES (2, 'Ben', 'Carter', 3, TRUE, 2022, 'ben.carter@school.example.com')")
+curs1.execute("INSERT OR IGNORE INTO Students (UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear, Email) VALUES (3, 'Charlotte', 'Davies', 3, TRUE, 2023, 'charlotte.davies@school.example.com')")
+curs1.execute("INSERT OR IGNORE INTO Students (UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear, Email) VALUES (4, 'Daniel', 'Evans', 3, TRUE, 2023, 'daniel.evans@school.example.com')")
+curs1.execute("INSERT OR IGNORE INTO Students (UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear, Email) VALUES (5, 'Emily', 'Foster', 3, TRUE, 2024, 'emily.foster@school.example.com')")
+curs1.execute("INSERT OR IGNORE INTO Students (UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear, Email) VALUES (6, 'Finn', 'Green', 3, TRUE, 2024, NULL)")
+curs1.execute("INSERT OR IGNORE INTO Students (UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear, Email) VALUES (7, 'Grace', 'Hall', 3, FALSE, 2020, NULL)")
+curs1.execute("INSERT OR IGNORE INTO Students (UStuID, Forename, Surname, MaxActiveLoans, AccountActive, EntryYear, Email) VALUES (8, 'Harry', 'Jones', 3, TRUE, 2021, 'harry.jones@school.example.com')")
+
+conn1.commit()
+
+# --- Staff test accounts ---
+# Password is "password" for all three
 curs2.execute("""
               INSERT OR IGNORE INTO Staff (UStaID, PasswordHash, Salt, Forename, Surname, AccessLevel, Email)
               VALUES (1, '166c88fd2ff550a17d1a587ebaeeb2bd3e7dd1e68f919dc3d2b076b7f2abe87f', 'ae0680da10104bb7bab3e508688c0ddd', 'Example', 'Teacher', 'Teacher', 'teacher@example.com')

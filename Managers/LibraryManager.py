@@ -1,4 +1,9 @@
+# This class contains all of the methods for managing the library, such as adding, removing, and updating books and issuing and returning loans.
+# This class only connects to LibraryData.db, and does not interact with SystemConfig.db.
+
+# Imports SQLite for database operations
 import sqlite3
+# Used for automatic date generation
 from datetime import datetime, timedelta
 class LibraryManager:
 

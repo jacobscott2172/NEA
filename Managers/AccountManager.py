@@ -8,7 +8,7 @@ import sqlite3
 import uuid
 # Used to hash passwords
 import hashlib
-# Used for automatic date generation when setting accounts to inactive
+# Used for automatic date generation
 from datetime import datetime
 # Used for sending email notifications
 import smtplib

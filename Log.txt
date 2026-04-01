@@ -1,0 +1,13 @@
+2026-04-01 19:33:37 - User 3 logged in
+2026-04-01 19:33:37 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-01 19:33:37 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-01 19:33:37 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-01 19:35:09 - User 3 logged out
+2026-04-01 19:35:13 - User 1 logged in
+2026-04-01 19:35:13 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-01 19:35:13 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-01 19:35:13 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-01 19:35:15 - 1 attempted to view unauthorised staff details: Insufficient permissions
+2026-04-01 19:35:16 - 1 attempted to view unauthorised staff details: Insufficient permissions
+2026-04-01 19:35:16 - 1 attempted to view unauthorised staff details: Insufficient permissions
+2026-04-01 19:35:17 - 1 attempted to view unauthorised staff details: Insufficient permissions

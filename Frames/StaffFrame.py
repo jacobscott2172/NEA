@@ -24,6 +24,7 @@ class StaffFrame(tk.Frame):
         TableFrame.grid_rowconfigure(0, weight=1)
         TableFrame.grid_columnconfigure(0, weight=1)
 
+        # SearchStaff returns (UStaID, Forename, Surname) so 3 columns is appropriate
         Columns = ("ID", "Forename", "Surname")
         self.__Table = ttk.Treeview(TableFrame, columns=Columns, show="headings")
         for Col in Columns:
@@ -46,7 +47,7 @@ class StaffFrame(tk.Frame):
         self.__DetailsText = tk.Label(self.__DetailsPanel, text="Use search to find staff, or click View My Details.", font=("Arial", 10), bg="white", justify="left", wraplength=220)
         self.__DetailsText.pack(anchor="w")
 
-        # --- Action buttons (Teacher level only) ---
+        # --- Action buttons (Teacher level) ---
         ActionBar = tk.Frame(self, bg="#f0f4f8")
         ActionBar.grid(row=2, column=0, columnspan=2, sticky="ew", padx=20, pady=10)
         ttk.Button(ActionBar, text="Update My Email", command=self.__ShowUpdateOwnEmailForm).pack(side="left", padx=(0, 8))
@@ -66,6 +67,7 @@ class StaffFrame(tk.Frame):
         ttk.Button(self.__UpdateOwnEmailForm, text="Cancel", command=self.__HideUpdateOwnEmailForm).grid(row=3, column=1, pady=8)
 
     def OnShow(self):
+        # Show own details when the frame is raised
         self.__ViewOwnDetails()
 
     def __Search(self):
@@ -87,7 +89,7 @@ class StaffFrame(tk.Frame):
         Values = self.__Table.item(Selected, "values")
         if not Values:
             return
-        # GetStaffDetails - Teachers can only view their own; Admins can view any
+        # GetStaffDetails - Teachers can only view their own; Admins+ can view any
         Details = self.__controller.GetAM().GetStaffDetails(Values[0])
         if isinstance(Details, tuple):
             ActiveStr = "Yes" if Details[4] else "No"
