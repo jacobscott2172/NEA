@@ -1,0 +1,5 @@
+2026-04-01 11:36:26 - User 3 logged in
+2026-04-01 11:36:26 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-01 11:36:26 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-01 11:36:26 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-01 11:37:05 - 3 removed copy 1
