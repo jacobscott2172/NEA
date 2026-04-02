@@ -15,3 +15,243 @@
 2026-04-02 10:30:51 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
 2026-04-02 10:30:51 - StartUp: SendOverdueNotifications - No overdue loans found.
 2026-04-02 10:30:51 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 13:50:18 - User 3 logged in
+2026-04-02 13:50:18 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 13:50:18 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 13:50:18 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 14:00:31 - User 3 logged out
+2026-04-02 14:00:43 - User 1 logged in
+2026-04-02 14:00:43 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 14:00:43 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 14:00:43 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 19:29:37 - User 1 logged out
+2026-04-02 19:29:42 - User 1 logged in
+2026-04-02 19:29:42 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 19:29:42 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 19:29:42 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 19:29:48 - User 1 logged out
+2026-04-02 19:29:56 - A user attempted to log in: Invalid Password
+2026-04-02 19:30:05 - A user attempted to log in: Invalid ID
+2026-04-02 19:30:05 - A user attempted to log in: Invalid ID
+2026-04-02 19:30:05 - A user attempted to log in: Invalid ID
+2026-04-02 19:30:40 - User 3 logged in
+2026-04-02 19:30:40 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 19:30:40 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 19:30:40 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 19:35:49 - User 3 updated SMTP settings
+2026-04-02 19:35:52 - User 3 logged out
+2026-04-02 19:37:44 - User 1 logged in
+2026-04-02 19:37:44 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 19:37:44 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 19:37:44 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 19:37:53 - 1 issued loan 1 of copy 1 to student 1
+2026-04-02 19:38:01 - 1 processed return of loan 1 for copy 1
+2026-04-02 19:38:21 - User 1 logged out
+2026-04-02 19:38:27 - User 3 logged in
+2026-04-02 19:38:27 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 19:38:27 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 19:38:27 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 19:38:36 - User 3 set Student account 1 to Inactive
+2026-04-02 19:38:56 - 3 issued loan 2 of copy 1 to student 2
+2026-04-02 19:38:59 - 3 issued loan 3 of copy 2 to student 2
+2026-04-02 19:39:02 - 3 issued loan 4 of copy 3 to student 2
+2026-04-02 19:42:15 - User 3 logged out
+2026-04-02 19:42:30 - User 3 logged in
+2026-04-02 19:42:30 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 19:42:30 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 19:42:30 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 19:42:51 - 3 issued loan 5 of copy 4 to student 2
+2026-04-02 19:43:32 - 3 processed return of loan 5 for copy 4
+2026-04-02 19:43:35 - 3 processed return of loan 2 for copy 1
+2026-04-02 19:43:39 - 3 processed return of loan 4 for copy 3
+2026-04-02 19:43:43 - 3 processed return of loan 3 for copy 2
+2026-04-02 19:46:07 - 3 issued reservation 1 for book 9780141396132
+2026-04-02 19:46:24 - 3 issued loan 6 of copy 1 to student 2
+2026-04-02 19:46:48 - 3 deleted reservation 1
+2026-04-02 19:46:54 - 3 processed return of loan 6 for copy 1
+2026-04-02 19:47:09 - 3 issued loan 7 of copy 1 to student 2
+2026-04-02 19:47:25 - 3 processed return of loan 7 for copy 1
+2026-04-02 19:48:07 - 3 issued loan 8 of copy 1 to student 2
+2026-04-02 19:48:19 - 3 extended loan 8 to 20260501
+2026-04-02 19:48:24 - 3 processed return of loan 8 for copy 1
+2026-04-02 19:48:55 - 3 issued reservation 1 for book 9780141396132
+2026-04-02 19:49:02 - 3 issued loan 9 of copy 2 to student 2
+2026-04-02 19:52:06 - 3 added author 7
+2026-04-02 19:52:06 - 3 added book 9780194267533
+2026-04-02 19:52:06 - User 3 Linked an author (ID: 7) to book (ISBN: 9780194267533)
+2026-04-02 19:54:20 - User 3 logged out
+2026-04-02 19:54:25 - User 1 logged in
+2026-04-02 19:54:25 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 19:54:25 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 19:54:25 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 19:54:30 - User 1 logged out
+2026-04-02 19:54:35 - User 2 logged in
+2026-04-02 19:54:35 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 19:54:35 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 19:54:35 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 19:54:36 - User 2 logged out
+2026-04-02 19:54:56 - User 3 logged in
+2026-04-02 19:54:56 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 19:54:56 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 19:54:56 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 19:55:08 - User 3 set Staff account 1 to Inactive
+2026-04-02 19:55:11 - User 3 logged out
+2026-04-02 19:55:15 - User 1 logged in
+2026-04-02 19:55:20 - User 1 logged out
+2026-04-02 19:58:52 - User 3 logged in
+2026-04-02 19:58:52 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 19:58:52 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 19:58:52 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 20:00:05 - Staff 1 attempted to log in: Account is inactive
+2026-04-02 20:00:09 - User 3 logged in
+2026-04-02 20:00:09 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:00:09 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 20:00:09 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 20:01:19 - 3 moved copy 1 to location 2
+2026-04-02 20:01:36 - 3 moved copy 1 to location 3
+2026-04-02 20:01:48 - 3 moved copy 1 to location 2
+2026-04-02 20:02:03 - 3 removed book 9780194267533
+2026-04-02 20:02:07 - 3 removed author 7
+2026-04-02 20:02:28 - 3 added copy 17 of book 9780141396132
+2026-04-02 20:02:35 - 3 removed copy 17
+2026-04-02 20:03:58 - User 3 added student 9
+2026-04-02 20:04:02 - User 3 removed student 9
+2026-04-02 20:04:50 - User 3 added student 9
+2026-04-02 20:04:50 - User 3 added student 10
+2026-04-02 20:04:50 - User 3 added student 11
+2026-04-02 20:04:50 - Batch Import: Skipping malformed line: Broken Row,Missing Fields
+
+2026-04-02 20:04:50 - User 3 batch imported 3 students
+2026-04-02 20:07:23 - User 3 removed student 11
+2026-04-02 20:07:25 - User 3 removed student 10
+2026-04-02 20:07:29 - User 3 removed student 9
+2026-04-02 20:08:22 - User 3 added student 9
+2026-04-02 20:08:37 - 3 issued loan 10 of copy 4 to student 9
+2026-04-02 20:08:46 - User 3 set Student account 9 to Inactive
+2026-04-02 20:09:03 - User 3 purged 0 inactive students from entry year 2010
+2026-04-02 20:09:17 - 3 processed return of loan 10 for copy 4
+2026-04-02 20:09:44 - User 3 purged 1 inactive students from entry year 2010
+2026-04-02 20:10:07 - User 3 set Student account 8 to Active
+2026-04-02 20:10:11 - User 3 set Student account 8 to Inactive
+2026-04-02 20:10:30 - User 3 set Student account 8 to Active
+2026-04-02 20:10:44 - User 3 set Student account 7 to Active
+2026-04-02 20:11:19 - User 3 added student 9
+2026-04-02 20:11:40 - User 3 updated email for student 9
+2026-04-02 20:12:07 - User 3 added student 10
+2026-04-02 20:12:46 - User 3 added staff member 4
+2026-04-02 20:12:49 - User 3 promoted user 4 to Admin
+2026-04-02 20:12:52 - User 3 promoted user 4 to SysAdmin
+2026-04-02 20:12:55 - User 3 demoted user 4 to Admin
+2026-04-02 20:12:59 - User 3 demoted user 4 to Teacher
+2026-04-02 20:13:02 - 3 attempted to self-demote
+2026-04-02 20:13:22 - User 3 logged in
+2026-04-02 20:13:22 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:13:22 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 20:13:22 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 20:14:49 - User 3 changed password for staff member 4
+2026-04-02 20:16:15 - User 3 added staff member 5
+2026-04-02 20:16:17 - User 3 logged out 
+
+2026-04-02 20:16:26 - User 5 logged in
+2026-04-02 20:16:26 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:16:26 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 20:16:26 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 20:16:54 - 5 issued reservation 2 for book 9780141396132
+2026-04-02 20:17:00 - User 5 logged out 
+
+2026-04-02 20:17:04 - Staff 1 attempted to log in: Account is inactive
+2026-04-02 20:17:10 - User 3 logged in
+2026-04-02 20:17:10 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:17:10 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 20:17:10 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 20:17:15 - User 3 promoted user 1 to Admin
+2026-04-02 20:17:22 - User 3 demoted user 1 to Teacher
+2026-04-02 20:17:29 - User 3 set Staff account 1 to Active
+2026-04-02 20:17:32 - User 3 logged out 
+
+2026-04-02 20:17:40 - User 1 logged in
+2026-04-02 20:17:40 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:17:40 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 20:17:40 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 20:17:56 - 1 attempted to update reservation 2: Insufficient permissions
+2026-04-02 20:18:03 - User 1 logged out 
+
+2026-04-02 20:18:08 - User 3 logged in
+2026-04-02 20:18:08 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:18:08 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 20:18:08 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 20:25:46 - 3 processed return of loan 9 for copy 2
+2026-04-02 20:25:54 - 3 deleted reservation 1
+2026-04-02 20:25:57 - 3 deleted reservation 2
+2026-04-02 20:26:20 - 3 issued reservation 1 for book 9780141396132
+2026-04-02 20:26:51 - 3 deleted reservation 1
+2026-04-02 20:27:24 - User 3 added staff member 6
+2026-04-02 20:27:27 - User 3 logged out 
+
+2026-04-02 20:27:32 - User 6 logged in
+2026-04-02 20:27:32 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:27:32 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 20:27:32 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 20:27:51 - 6 issued reservation 1 for book 9780141396132
+2026-04-02 20:27:58 - User 6 logged out 
+
+2026-04-02 20:28:03 - User 3 logged in
+2026-04-02 20:28:03 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:28:03 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 20:28:04 - Email sent to jacob.scott2172@gmail.com: Library Reservation Ready
+2026-04-02 20:28:04 - StartUp: Sent 1 of 1 reservation notifications
+2026-04-02 20:28:56 - 3 issued loan 11 of copy 4 to student 10
+2026-04-02 20:28:58 - User 3 logged out 
+
+2026-04-02 20:35:11 - User 3 logged in
+2026-04-02 20:35:11 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:35:11 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 20:35:12 - Email sent to jacob.scott2172@gmail.com: Library Reservation Ready
+2026-04-02 20:35:12 - StartUp: Sent 1 of 1 reservation notifications
+2026-04-02 20:36:12 - User 3 added student 11
+2026-04-02 20:36:18 - User 3 removed student 11
+2026-04-02 20:36:31 - User 3 changed maximum loans for default students to 5
+2026-04-02 20:36:45 - User 3 added student 11
+2026-04-02 20:36:49 - User 3 removed student 11
+2026-04-02 20:38:28 - User 3 logged out 
+
+2026-04-02 20:38:34 - User 3 logged in
+2026-04-02 20:38:34 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:38:35 - Email sent to jacob.scott2172@gmail.com: Overdue Library Book
+2026-04-02 20:38:35 - 3 sent 1 overdue notifications
+2026-04-02 20:38:35 - StartUp: SendOverdueNotifications - Sent 1 overdue notifications.
+2026-04-02 20:38:35 - Email sent to jacob.scott2172@gmail.com: Library Reservation Ready
+2026-04-02 20:38:35 - StartUp: Sent 1 of 1 reservation notifications
+2026-04-02 20:39:24 - 3 added author 7
+2026-04-02 20:39:31 - 3 removed author 7
+2026-04-02 20:41:09 - 3 added author 7
+2026-04-02 20:41:09 - 3 added book 9783869711423
+2026-04-02 20:41:09 - User 3 Linked an author (ID: 7) to book (ISBN: 9783869711423)
+2026-04-02 20:42:32 - 3 removed author 7
+2026-04-02 20:42:47 - 3 processed return of loan 11 for copy 4
+2026-04-02 20:43:30 - User 3 logged out 
+
+2026-04-02 20:43:38 - User 1 logged in
+2026-04-02 20:43:38 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:43:38 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 20:43:39 - Email sent to jacob.scott2172@gmail.com: Library Reservation Ready
+2026-04-02 20:43:39 - StartUp: Sent 1 of 1 reservation notifications
+2026-04-02 20:44:05 - 1 issued reservation 2 for book 9780141396132
+2026-04-02 20:44:11 - User 1 logged out 
+
+2026-04-02 20:44:16 - User 2 logged in
+2026-04-02 20:44:16 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:44:16 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 20:44:18 - Email sent to jacob.scott2172@gmail.com: Library Reservation Ready
+2026-04-02 20:44:19 - Email sent to teacher@example.com: Library Reservation Ready
+2026-04-02 20:44:19 - StartUp: Sent 2 of 2 reservation notifications
+2026-04-02 20:44:50 - 2 deleted reservation 1
+2026-04-02 20:44:53 - 2 deleted reservation 2
+2026-04-02 20:44:55 - User 2 logged out 
+
+2026-04-02 20:45:00 - User 3 logged in
+2026-04-02 20:45:00 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 20:45:00 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 20:45:00 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 20:45:50 - User 3 logged out 
+

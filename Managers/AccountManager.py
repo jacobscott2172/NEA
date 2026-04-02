@@ -8,7 +8,7 @@ import sqlite3
 import uuid
 # Used to hash passwords
 import hashlib
-# Used for automatic date generation
+# Used for automatic date generation when setting accounts to inactive
 from datetime import datetime
 # Used for sending email notifications
 import smtplib
@@ -585,6 +585,10 @@ class AccountManager:
             if InputPassword != row[1]:
                 self.Log(f"A user attempted to log in: Invalid Password")
                 return "Invalid ID or Password"
+            # If the account is inactive, the user cannot log in
+            if not row[6]:
+                self.Log(f"Staff {row[0]} attempted to log in: Account is inactive")
+                return "Account is inactive."
             # Assigns CurrentUser and CurrentAccessLevel their respective values
             self.__CurrentUser = int(row[0])
             self.__CurrentAccessLevel = str(row[5])
@@ -598,7 +602,7 @@ class AccountManager:
 
     def LogOut(self):
         # Logs logging out
-        self.Log(f"User {self.__CurrentUser} logged out")
+        self.Log(f"User {self.__CurrentUser} logged out \n")
         # Sets current user and access level to None
         self.__CurrentUser = None
         self.__CurrentAccessLevel = "None"

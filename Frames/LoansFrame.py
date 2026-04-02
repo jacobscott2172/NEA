@@ -225,6 +225,16 @@ class ActiveLoansTab(tk.Frame):
         if "successfully" in Result.lower():
             self.__HideIssueForm()
             self.__ShowAll()
+        elif "loan limit" in Result.lower():
+            # Student is at their MaxActiveLoans - prompt the teacher to override
+            if messagebox.askyesno("Loan Limit Reached", f"{Result}\n\nDo you want to override and issue the loan anyway?"):
+                # Override by calling IssueLoan with override flag
+                OverrideResult = self.__controller.GetLM().IssueLoan(CopyID, StudentID, Override=True)
+                if "successfully" in OverrideResult.lower():
+                    self.__HideIssueForm()
+                    self.__ShowAll()
+                else:
+                    self.__IssueFormError.config(text=OverrideResult)
         else:
             self.__IssueFormError.config(text=Result)
 
