@@ -389,7 +389,7 @@ class LibraryManager:
             return f"System error: {e}"
 
 # --- Issuing, returning, and deleting loans ---
-    def IssueLoan(self, UCID, UStuID):
+    def IssueLoan(self, UCID, UStuID, Override=False):
         try:
             # Permission check
             if self.__AM.CheckPermission("Teacher") != True:
@@ -409,7 +409,7 @@ class LibraryManager:
                 "SELECT COUNT(*) FROM Loans WHERE UStuID = ? AND ReturnDate IS NULL", (UStuID,)
             )
             ActiveLoans = self.__Curs.fetchone()[0]
-            if ActiveLoans >= MaxLoans:
+            if ActiveLoans >= MaxLoans and not Override:
                 return "Loan limit reached."
             # Get dates
             LoanDate = int(datetime.now().strftime("%Y%m%d"))

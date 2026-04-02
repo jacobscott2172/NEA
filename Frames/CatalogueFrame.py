@@ -15,7 +15,7 @@ class CatalogueFrame(tk.Frame):
         TabBar.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 0))
 
         self.__Tabs = {}
-        self.__ActiveTab = None
+        self.__ActiveTabClass = BooksTab
         for Label, Tab in [("Books", BooksTab), ("Authors", AuthorsTab), ("Copies", CopiesTab), ("Locations", LocationsTab)]:
             Btn = tk.Button(
                 TabBar, text=Label, font=("Arial", 11),
@@ -42,15 +42,22 @@ class CatalogueFrame(tk.Frame):
         self.__ShowTab(BooksTab, "Books")
 
     def __ShowTab(self, TabClass, Label):
-        # Reset all tab button styles
         for L, (Btn, _) in self.__Tabs.items():
             if L == Label:
                 Btn.config(bg="#1e293b", fg="white")
             else:
                 Btn.config(bg="#f0f4f8", fg="#1e293b")
+        self.__ActiveTabClass = TabClass
         self.__TabFrames[TabClass].tkraise()
-        if hasattr(self.__TabFrames[TabClass], "OnShow"):
-            self.__TabFrames[TabClass].OnShow()
+        if self.__controller.GetAM().GetCurrentUser() is not None:
+            if hasattr(self.__TabFrames[TabClass], "OnShow"):
+                self.__TabFrames[TabClass].OnShow()
+
+    def OnShow(self):
+        if self.__controller.GetAM().GetCurrentUser() is not None:
+            CurrentFrame = self.__TabFrames[self.__ActiveTabClass]
+            if hasattr(CurrentFrame, "OnShow"):
+                CurrentFrame.OnShow()
 
 
 class BooksTab(tk.Frame):
