@@ -132,9 +132,12 @@ class BooksTab(tk.Frame):
         tk.Label(self.__AddForm, text="Author Forename", font=("Arial", 10), bg="white").grid(row=2, column=0, sticky="e", padx=(10,4), pady=(8,0))
         self.__AuthorForename = ttk.Entry(self.__AddForm, width=15, font=("Arial", 10))
         self.__AuthorForename.grid(row=2, column=1, padx=(0,10), pady=(8,0))
-        tk.Label(self.__AddForm, text="Author Surname", font=("Arial", 10), bg="white").grid(row=2, column=2, sticky="e", padx=(10,4), pady=(8,0))
+        tk.Label(self.__AddForm, text="Middlename(s)", font=("Arial", 10), bg="white").grid(row=2, column=2, sticky="e", padx=(10,4), pady=(8,0))
+        self.__AuthorMiddlename = ttk.Entry(self.__AddForm, width=15, font=("Arial", 10))
+        self.__AuthorMiddlename.grid(row=2, column=3, padx=(0,10), pady=(8,0))
+        tk.Label(self.__AddForm, text="Author Surname", font=("Arial", 10), bg="white").grid(row=2, column=4, sticky="e", padx=(10,4), pady=(8,0))
         self.__AuthorSurname = ttk.Entry(self.__AddForm, width=15, font=("Arial", 10))
-        self.__AuthorSurname.grid(row=2, column=3, padx=(0,10), pady=(8,0))
+        self.__AuthorSurname.grid(row=2, column=5, padx=(0,10), pady=(8,0))
 
         self.__AddFormError = tk.Label(self.__AddForm, text="", fg="red", font=("Arial", 10), bg="white")
         self.__AddFormError.grid(row=3, column=0, columnspan=4, pady=(8,0))
@@ -200,6 +203,7 @@ class BooksTab(tk.Frame):
         for Entry in self.__AddEntries.values():
             Entry.delete(0, "end")
         self.__AuthorForename.delete(0, "end")
+        self.__AuthorMiddlename.delete(0, "end")
         self.__AuthorSurname.delete(0, "end")
 
     def __SubmitAdd(self):
@@ -208,9 +212,10 @@ class BooksTab(tk.Frame):
         Genre = self.__AddEntries["Genre"].get()
         Subject = self.__AddEntries["Subject"].get()
         Forename = self.__AuthorForename.get()
+        Middlename = self.__AuthorMiddlename.get().strip() or None
         Surname = self.__AuthorSurname.get()
         Result = self.__controller.GetLM().StreamlinedAddBook(
-            int(ISBN), Title, Genre, Subject, [Forename], [None], [Surname]
+            int(ISBN), Title, Genre, Subject, [Forename], [Middlename], [Surname]
         )
         if "successfully" in str(Result):
             self.__HideAddForm()
@@ -429,6 +434,7 @@ class CopiesTab(tk.Frame):
         ttk.Button(ActionBar, text="Bulk Add Copies", command=self.__ShowBulkAddForm).pack(side="left", padx=(0, 8))
         ttk.Button(ActionBar, text="Move Copy", command=self.__ShowMoveForm).pack(side="left", padx=(0, 8))
         ttk.Button(ActionBar, text="Change Home Location", command=self.__ShowChangeHomeForm).pack(side="left", padx=(0, 8))
+        ttk.Button(ActionBar, text="Update Copy ISBN", command=self.__ShowUpdateCopyForm).pack(side="left", padx=(0, 8))
         ttk.Button(ActionBar, text="Remove Copy", command=self.__RemoveCopy).pack(side="left")
 
         # --- Inline add form ---
@@ -502,6 +508,23 @@ class CopiesTab(tk.Frame):
         ttk.Button(self.__ChangeHomeForm, text="Submit", command=self.__SubmitChangeHome).grid(row=3, column=0, pady=8)
         ttk.Button(self.__ChangeHomeForm, text="Cancel", command=self.__HideChangeHomeForm).grid(row=3, column=1, pady=8)
 
+        # --- Inline update copy ISBN form ---
+        self.__UpdateCopyForm = tk.Frame(self, bg="white", padx=15, pady=15)
+        self.__UpdateCopyForm.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+        self.__UpdateCopyForm.grid_remove()
+
+        tk.Label(self.__UpdateCopyForm, text="Update Copy ISBN", font=("Arial", 11, "bold"), bg="white").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 8))
+        tk.Label(self.__UpdateCopyForm, text="Copy ID", font=("Arial", 10), bg="white").grid(row=1, column=0, sticky="e", padx=(10, 4))
+        self.__UpdateCopyCopyIDLabel = tk.Label(self.__UpdateCopyForm, text="", font=("Arial", 10, "bold"), bg="white")
+        self.__UpdateCopyCopyIDLabel.grid(row=1, column=1, sticky="w", padx=(0, 10))
+        tk.Label(self.__UpdateCopyForm, text="New ISBN", font=("Arial", 10), bg="white").grid(row=1, column=2, sticky="e", padx=(10, 4))
+        self.__UpdateCopyISBN = ttk.Entry(self.__UpdateCopyForm, width=15, font=("Arial", 10))
+        self.__UpdateCopyISBN.grid(row=1, column=3, padx=(0, 10))
+        self.__UpdateCopyFormError = tk.Label(self.__UpdateCopyForm, text="", fg="red", font=("Arial", 10), bg="white")
+        self.__UpdateCopyFormError.grid(row=2, column=0, columnspan=4, pady=(8, 0))
+        ttk.Button(self.__UpdateCopyForm, text="Submit", command=self.__SubmitUpdateCopy).grid(row=3, column=0, pady=8)
+        ttk.Button(self.__UpdateCopyForm, text="Cancel", command=self.__HideUpdateCopyForm).grid(row=3, column=1, pady=8)
+
     def OnShow(self):
         self.__ShowAll()
 
@@ -540,6 +563,7 @@ class CopiesTab(tk.Frame):
         self.__HideBulkAddForm()
         self.__HideMoveForm()
         self.__HideChangeHomeForm()
+        self.__HideUpdateCopyForm()
 
     # --- Add single copy ---
     def __ShowAddForm(self):
@@ -669,6 +693,36 @@ class CopiesTab(tk.Frame):
                 self.__DetailsText.config(text="Select a copy to view details.")
             else:
                 messagebox.showerror("Error", Result)
+
+    # --- Update copy ISBN ---
+    def __ShowUpdateCopyForm(self):
+        Selected = self.__Table.focus()
+        if not Selected:
+            messagebox.showinfo("Info", "Select a copy to update.")
+            return
+        Values = self.__Table.item(Selected, "values")
+        self.__HideAllForms()
+        self.__UpdateCopyCopyIDLabel.config(text=str(Values[0]))
+        self.__UpdateCopyForm.grid()
+
+    def __HideUpdateCopyForm(self):
+        self.__UpdateCopyForm.grid_remove()
+        self.__UpdateCopyFormError.config(text="")
+        self.__UpdateCopyISBN.delete(0, "end")
+
+    def __SubmitUpdateCopy(self):
+        try:
+            UCID = int(self.__UpdateCopyCopyIDLabel.cget("text"))
+            NewISBN = int(self.__UpdateCopyISBN.get())
+        except ValueError:
+            self.__UpdateCopyFormError.config(text="ISBN must be numeric.")
+            return
+        Result = self.__controller.GetLM().UpdateCopyISBN(UCID, NewISBN)
+        if "successfully" in Result:
+            self.__HideUpdateCopyForm()
+            self.__ShowAll()
+        else:
+            self.__UpdateCopyFormError.config(text=Result)
 
 
 class LocationsTab(tk.Frame):

@@ -36,12 +36,19 @@ class LibraryManager:
             if self.__AM.CheckPermission("Teacher") != True:
                 self.__AM.Log(f"{self.__AM.GetCurrentUser()} attempted to add an author: Insufficient permissions")
                 return "Access Denied: Insufficient Permissions."
-            # Duplicate check
-            self.__Curs.execute("""
-                SELECT UAID
-                FROM Authors
-                WHERE Forename = ? AND Middlenames = ? AND Surname = ?
-            """,(Forename, Middlename, Surname))
+            # Duplicate check - handles NULL middlenames separately since NULL = NULL is false in SQL
+            if Middlename is None or Middlename == "":
+                self.__Curs.execute("""
+                    SELECT UAID
+                    FROM Authors
+                    WHERE Forename = ? AND (Middlenames IS NULL OR Middlenames = '') AND Surname = ?
+                """,(Forename, Surname))
+            else:
+                self.__Curs.execute("""
+                    SELECT UAID
+                    FROM Authors
+                    WHERE Forename = ? AND Middlenames = ? AND Surname = ?
+                """,(Forename, Middlename, Surname))
             ExistingAuthor = self.__Curs.fetchone()
             if ExistingAuthor:
                 # Author already exists, return their UAID
@@ -358,6 +365,30 @@ class LibraryManager:
         # Error handling and logging
         except Exception as e:
             self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to change the home location of a copy and encountered an error: {e}")
+            return f"System error: {e}"
+
+    def UpdateCopyISBN(self, UCID, NewISBN):
+        try:
+            # Permission check
+            if self.__AM.CheckPermission("Teacher") != True:
+                return "Access Denied: Insufficient Permissions."
+            # Typo check - copy must exist
+            self.__Curs.execute("SELECT UCID FROM Copies WHERE UCID = ?", (UCID,))
+            if not self.__Curs.fetchone():
+                return "Error: Copy ID does not exist."
+            # Typo check - new ISBN must exist in Books
+            self.__Curs.execute("SELECT ISBN FROM Books WHERE ISBN = ?", (NewISBN,))
+            if not self.__Curs.fetchone():
+                return "Error: ISBN does not exist in catalogue."
+            # Update
+            self.__Curs.execute("UPDATE Copies SET ISBN = ? WHERE UCID = ?", (NewISBN, UCID))
+            # Commits, Logs, Returns confirmation
+            self.__Conn.commit()
+            self.__AM.Log(f"{self.__AM.GetCurrentUser()} updated copy {UCID} to ISBN {NewISBN}")
+            return "Copy updated successfully"
+        # Error handling and logging
+        except Exception as e:
+            self.__AM.Log(f"User {self.__AM.GetCurrentUser()} attempted to update a copy and encountered an error: {e}")
             return f"System error: {e}"
 
     def RemoveCopy(self, UCID):

@@ -255,3 +255,38 @@
 2026-04-02 20:45:00 - StartUp: Sent 0 of 0 reservation notifications
 2026-04-02 20:45:50 - User 3 logged out 
 
+2026-04-02 21:41:54 - User 1 logged in
+2026-04-02 21:41:54 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 21:41:54 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 21:41:54 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 21:42:10 - User 1 logged out 
+
+2026-04-02 21:42:44 - A user attempted to log in: Invalid ID
+2026-04-02 21:43:02 - A user attempted to log in: Invalid Password
+2026-04-02 21:43:02 - A user attempted to log in: Invalid Password
+2026-04-02 21:45:30 - User 1 logged in
+2026-04-02 21:45:30 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 21:45:30 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 21:45:30 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 21:45:34 - User 1 logged out 
+
+2026-04-02 21:47:44 - User 1 logged in
+2026-04-02 21:47:44 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 21:47:44 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 21:47:44 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 21:48:15 - User 1 logged out 
+
+2026-04-02 21:48:40 - A user attempted to log in: Invalid Password
+2026-04-02 21:48:54 - A user attempted to log in: Invalid ID
+2026-04-02 21:48:54 - A user attempted to log in: Invalid ID
+2026-04-02 21:49:37 - User 1 logged in
+2026-04-02 21:49:37 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 21:49:37 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 21:49:37 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 21:51:31 - User 1 logged out 
+
+2026-04-02 21:51:37 - User 3 logged in
+2026-04-02 21:51:37 - StartUp: SendDueTomorrowNotifications - No loans due tomorrow.
+2026-04-02 21:51:37 - StartUp: SendOverdueNotifications - No overdue loans found.
+2026-04-02 21:51:37 - StartUp: Sent 0 of 0 reservation notifications
+2026-04-02 21:52:01 - User 3 set Student account 1 to Active
