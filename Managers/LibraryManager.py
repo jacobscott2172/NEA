@@ -84,6 +84,8 @@ class LibraryManager:
             Author = self.__Curs.fetchone()
             if not Author:
                 return "Author not found."
+            # Removes author links first to prevent orphan BooksAuthors entries
+            self.__Curs.execute("DELETE FROM BooksAuthors WHERE UAID = ?", (UAID,))
             # Removes author
             self.__Curs.execute("""
                 DELETE FROM Authors
@@ -179,6 +181,8 @@ class LibraryManager:
             Book = self.__Curs.fetchone()
             if not Book:
                 return "Book not found."
+            # Removes author links first to prevent orphan BooksAuthors entries
+            self.__Curs.execute("DELETE FROM BooksAuthors WHERE ISBN = ?", (ISBN,))
             # Removes book
             self.__Curs.execute("""
                 DELETE FROM Books
@@ -201,7 +205,7 @@ class LibraryManager:
             # Inserts a BooksAuthors row for each UAID in the list
             for ID in UAIDList:
                 self.__Curs.execute("""
-                    INSERT INTO BooksAuthors (ISBN, UAID)
+                    INSERT OR IGNORE INTO BooksAuthors (ISBN, UAID)
                     VALUES (?, ?)
                 """,(ISBN, ID))
                 self.__AM.Log(f"User {self.__AM.GetCurrentUser()} Linked an author (ID: {ID}) to book (ISBN: {ISBN})")
